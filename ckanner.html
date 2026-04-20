@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сканер Склада (WMS + Редактор)</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #00d2ff;
+            --secondary: #3a7bd5;
+            --bg-dark: #0f0c29;
+            --card-bg: rgba(255, 255, 255, 0.07);
+            --border: rgba(255, 255, 255, 0.1);
+            --success: #00ff88;
+            --warning: #ffb700;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark), #302b63, #24243e);
+            min-height: 100vh;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 60px;
+        }
+
+        header { text-align: center; padding: 15px; width: 100%; max-width: 600px; }
+        header h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container { width: 100%; max-width: 600px; padding: 0 15px; }
+
+        /* --- Location Selector --- */
+        .location-panel {
+            background: rgba(0, 210, 255, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .loc-label { font-size: 0.85rem; color: var(--primary); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .loc-controls { display: flex; gap: 10px; }
+        
+        select.loc-select {
+            flex: 1;
+            padding: 10px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .btn-add-loc {
+            padding: 0 15px;
+            background: var(--secondary);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        /* --- Tabs --- */
+        .tabs {
+            display: flex;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 15px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            color: #aaa;
+            cursor: pointer;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+        .tab-btn.active {
+            background: var(--secondary);
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(58, 123, 213, 0.3);
+        }
+
+        /* --- Sections --- */
+        .section { display: none; animation: fadeIn 0.3s ease; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Panels --- */
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+        }
+
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; }
+        #reader video { border-radius: 12px; }
+        #reader__dashboard { display: none !important; }
+
+        /* --- Inputs --- */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+        }
+        input:focus { border-color: var(--primary); }
+
+        /* --- Buttons --- */
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; width: 100%; }
+        .btn-danger { background: #ff416c; color: #fff; }
+        .btn-small { padding: 6px 12px; font-size: 0.8rem; }
+        
+        .controls { display: flex; gap: 10px; margin-top: 10px; }
+
+        /* --- List Items --- */
+        .item-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--primary);
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .item-card.updated {
+            background: rgba(0, 255, 136, 0.25);
+            border-left-color: var(--success);
+            transform: scale(1.02);
+        }
+
+        .loc-badge {
+            display: inline-block;
+            background: rgba(255, 183, 0, 0.2);
+            color: var(--warning);
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            border: 1px solid rgba(255, 183, 0, 0.3);
+        }
+
+        .item-row-main { display: flex; justify-content: space-between; align-items: start; }
+        .item-info { flex: 1; padding-right: 10px; }
+        .item-code { font-family: monospace; font-size: 1.1rem; color: var(--primary); font-weight: bold; }
+        .item-name { font-size: 0.95rem; color: #ddd; margin-top: 2px; }
+
+        .qty-control {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 2px;
+        }
+        .qty-btn {
+            width: 30px; height: 30px;
+            border: none; background: rgba(255,255,255,0.1);
+            color: #fff; border-radius: 6px; cursor: pointer;
+            font-size: 1.2rem; line-height: 1;
+        }
+        .qty-val { width: 35px; text-align: center; font-size: 1.1rem; font-weight: bold; }
+
+        .action-buttons {
+            position: absolute; 
+            top: 10px; 
+            right: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        .icon-btn {
+            background: none; border: none; cursor: pointer; font-size: 1.1rem; opacity: 0.7; transition: 0.2s;
+        }
+        .icon-btn:hover { opacity: 1; transform: scale(1.1); }
+        .edit-btn { color: var(--warning); }
+        .del-btn { color: #555; }
+        .del-btn:hover { color: #ff416c; }
+
+        /* --- Modal Editor --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-overlay.open { display: flex; animation: fadeIn 0.2s; }
+        
+        .modal-box {
+            background: #24243e;
+            border: 1px solid var(--primary);
+            border-radius: 20px;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.2);
+        }
+        
+        .modal-title { margin-bottom: 15px; color: var(--primary); font-size: 1.2rem; }
+        .modal-field { margin-bottom: 15px; }
+        .modal-label { display: block; color: #aaa; font-size: 0.8rem; margin-bottom: 5px; }
+        .modal-input { background: rgba(0,0,0,0.5); border: 1px solid #555; }
+        .modal-input[readonly] { color: #888; cursor: not-allowed; }
+
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-cancel { background: rgba(255,255,255,0.1); color: #fff; flex: 1; }
+        .btn-save { background: var(--success); color: #000; flex: 1; }
+
+        /* --- Toast --- */
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: #333; color: #fff; padding: 10px 20px; border-radius: 30px;
+            transition: 0.3s; z-index: 3000; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            white-space: nowrap;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.success { background: var(--success); color: #000; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🏭 WMS Склад</h1>
+    </header>
+
+    <div class="container">
+        
+        <!-- Выбор Локации -->
+        <div class="location-panel">
+            <span class="loc-label">Текущее место хранения:</span>
+            <div class="loc-controls">
+                <select id="locationSelect" class="loc-select" onchange="saveLocation()">
+                    <option value="Приемка">📥 Приемка</option>
+                    <option value="Зал - Стеллаж 1">🛒 Зал - Стеллаж 1</option>
+                    <option value="Склад - Полка А">📦 Склад - Полка А</option>
+                    <option value="Склад - Полка Б">📦 Склад - Полка Б</option>
+                    <option value="Брак">⚠️ Брак</option>
+                </select>
+                <button class="btn-add-loc" onclick="addNewLocation()" title="Добавить новое место">+</button>
+            </div>
+        </div>
+
+        <!-- Вкладки -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('scan')">📷 Сканер</button>
+            <button class="tab-btn" onclick="switchTab('manual')">⌨️ Ручной ввод</button>
+        </div>
+
+        <!-- Секция Сканера -->
+        <div id="section-scan" class="section active">
+            <div class="panel">
+                <div id="reader"></div>
+                <div style="text-align:center; margin-top:10px; color:#aaa; font-size:0.9rem;" id="scanStatus">Камера выключена</div>
+                <div class="controls">
+                    <button class="btn btn-primary" id="btnStart" onclick="startScan()">▶ Старт</button>
+                    <button class="btn btn-danger" id="btnStop" onclick="stopScan()" disabled>⏹ Стоп</button>
+                </div>
+            </div>
+            
+            <div style="text-align: center; color: #888; font-size: 0.85rem; margin-bottom: 10px;">
+                Сканирование добавляет +1 шт. в выбранную локацию
+            </div>
+        </div>
+
+        <!-- Секция Ручного ввода -->
+        <div id="section-manual" class="section">
+            <div class="panel">
+                <div class="form-grid">
+                    <input type="text" id="manCode" placeholder="Штрих-код" onkeypress="handleManualEnter(event)">
+                    <input type="text" id="manName" placeholder="Название товара" onkeypress="handleManualEnter(event)">
+                    <input type="number" id="manQty" value="1" min="1" placeholder="Количество" onkeypress="handleManualEnter(event)">
+                    
+                    <button class="btn btn-primary" onclick="addManual()">➕ Добавить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Список результатов -->
+        <div class="panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3>📋 Остатки <span id="countBadge" style="background:var(--secondary); padding:2px 8px; border-radius:10px; font-size:0.8rem;">0</span></h3>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn btn-small btn-primary" style="background:#2ea44f;" onclick="exportCSV()">📊 Excel</button>
+                    <button class="btn btn-small btn-danger" onclick="clearAll()">🗑</button>
+                </div>
+            </div>
+            
+            <div id="resultList">
+                <div style="text-align:center; color:#555; padding:20px;">Список пуст.</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Модальное окно редактора -->
+    <div id="editModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title">Редактировать товар</h3>
+            
+            <div class="modal-field">
+                <label class="modal-label">Штрихкод (не меняется)</label>
+                <input type="text" id="editCode" class="modal-input" readonly>
+            </div>
+            
+            <div class="modal-field">
+                <label class="modal-label">Название</label>
+                <input type="text" id="editName" class="modal-input" placeholder="Введите название...">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeModal()">Отмена</button>
+                <button class="btn btn-save" onclick="saveEdit()">💾 Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Сообщение</div>
+
+    <script>
+        // --- Данные ---
+        let inventory = [];
+        let locations = ["Приемка", "Зал - Стеллаж 1", "Склад - Полка А", "Склад - Полка Б", "Брак"];
+        let currentLocation = localStorage.getItem('wms_location') || "Приемка";
+        
+        let scanner = null;
+        let isScanning = false;
+        let audioCtx = null;
+        let lastScanTime = 0;
+        let editingId = null; // ID товара, который сейчас редактируем
+
+        // Инициализация локации при загрузке
+        window.onload = function() {
+            updateLocationSelect();
+            document.getElementById('locationSelect').value = currentLocation;
+        };
+
+        // --- Управление Локациями ---
+        function saveLocation() {
+            currentLocation = document.getElementById('locationSelect').value;
+            localStorage.setItem('wms_location', currentLocation);
+            showToast(`Локация: ${currentLocation}`);
+        }
+
+        function addNewLocation() {
+            const newName = prompt("Введите название нового места хранения:", "Новое место");
+            if (newName && !locations.includes(newName)) {
+                locations.push(newName);
+                updateLocationSelect();
+                document.getElementById('locationSelect').value = newName;
+                saveLocation();
+            }
+        }
+
+        function updateLocationSelect() {
+            const select = document.getElementById('locationSelect');
+            select.innerHTML = '';
+            locations.sort().forEach(loc => {
+                const opt = document.createElement('option');
+                opt.value = loc;
+                opt.textContent = loc;
+                select.appendChild(opt);
+            });
+        }
+
+        // --- Звук ---
+        function beep(type = 'normal') {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            if (type === 'update') {
+                osc.frequency.value = 1800; 
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
+            } else {
+                osc.frequency.value = 1200;
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.15);
+            }
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+        }
+
+        // --- Вкладки ---
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`section-${tab}`).classList.add('active');
+            if(tab === 'manual') setTimeout(() => document.getElementById('manCode').focus(), 100);
+        }
+
+        // --- Логика Сканера ---
+        async function startScan() {
+            try {
+                document.getElementById('scanStatus').innerText = "Запуск...";
+                scanner = new Html5Qrcode("reader");
+                
+                await scanner.start(
+                    { facingMode: "environment" },
+                    { fps: 15, qrbox: { width: 250, height: 250 } },
+                    onScanSuccess,
+                    () => {}
+                );
+                
+                isScanning = true;
+                toggleScanButtons(true);
+                document.getElementById('scanStatus').innerText = `Сканируем в: ${currentLocation}`;
+                document.getElementById('scanStatus').style.color = "#00ff88";
+
+            } catch (err) {
+                showToast("Ошибка: " + err);
+            }
+        }
+
+        async function stopScan() {
+            if (scanner && isScanning) {
+                await scanner.stop();
+                scanner.clear();
+            }
+            isScanning = false;
+            toggleScanButtons(false);
+            document.getElementById('scanStatus').innerText = "Остановлено";
+            document.getElementById('scanStatus').style.color = "#aaa";
+        }
+
+        function toggleScanButtons(active) {
+            document.getElementById('btnStart').disabled = active;
+            document.getElementById('btnStop').disabled = !active;
+        }
+
+        function onScanSuccess(text) {
+            const now = Date.now();
+            if (now - lastScanTime < 1500) return;
+            lastScanTime = now;
+            addItemAuto(text);
+        }
+
+        // --- ГЛАВНАЯ ЛОГИКА (Учет Локации) ---
+        function addItemAuto(code) {
+            const existingItem = inventory.find(item => item.code === code && item.location === currentLocation);
+            
+            if (existingItem) {
+                existingItem.qty += 1;
+                beep('update');
+                showToast(`+1 в ${currentLocation} (Всего: ${existingItem.qty})`, true);
+                renderList(existingItem.id);
+            } else {
+                const newItem = {
+                    id: Date.now(),
+                    code: code,
+                    name: `Товар ${code}`,
+                    location: currentLocation,
+                    qty: 1,
+                    time: new Date().toLocaleTimeString()
+                };
+                
+                inventory.unshift(newItem);
+                beep('new');
+                showToast(`Новый товар в ${currentLocation}`);
+                renderList(newItem.id);
+            }
+        }
+
+        // --- Ручной ввод ---
+        function handleManualEnter(e) {
+            if (e.key === 'Enter') addManual();
+        }
+
+        function addManual() {
+            const code = document.getElementById('manCode').value.trim();
+            const name = document.getElementById('manName').value.trim();
+            const qty = parseInt(document.getElementById('manQty').value) || 1;
+
+            if(!code) return showToast("Введите штрих-код!");
+
+            const existingItem = inventory.find(item => item.code === code && item.location === currentLocation);
+            
+            if (existingItem) {
+                existingItem.qty += qty;
+                if(name) existingItem.name = name;
+                beep('update');
+                showToast(`Добавлено ${qty} шт. в ${currentLocation}`);
+                renderList(existingItem.id);
+            } else {
+                const finalName = name || `Товар ${code}`;
+                const newItem = {
+                    id: Date.now(),
+                    code: code,
+                    name: finalName,
+                    location: currentLocation,
+                    qty: qty,
+                    time: new Date().toLocaleTimeString()
+                };
+                inventory.unshift(newItem);
+                beep('new');
+                showToast(`Создан в ${currentLocation}`);
+                renderList(newItem.id);
+            }
+            
+            document.getElementById('manCode').value = '';
+            document.getElementById('manName').value = '';
+            document.getElementById('manQty').value = 1;
+            document.getElementById('manCode').focus();
+        }
+
+        // --- РЕДАКТИРОВАНИЕ НАЗВАНИЯ ---
+        function openEditModal(id) {
+            const item = inventory.find(i => i.id === id);
+            if (!item) return;
+
+            editingId = id;
+            document.getElementById('editCode').value = item.code;
+            document.getElementById('editName').value = item.name;
+            
+            document.getElementById('editModal').classList.add('open');
+            document.getElementById('editName').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('open');
+            editingId = null;
+        }
+
+        function saveEdit() {
+            if (editingId === null) return;
+            
+            const newName = document.getElementById('editName').value.trim();
+            if (!newName) {
+                showToast("Название не может быть пустым!");
+                return;
+            }
+
+            const item = inventory.find(i => i.id === editingId);
+            if (item) {
+                item.name = newName;
+                renderList();
+                showToast("Название сохранено");
+                closeModal();
+            }
+        }
+
+        // Закрытие модального окна по клику вне его
+        document.getElementById('editModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // --- Отрисовка списка ---
+        function updateQty(id, change) {
+            const item = inventory.find(i => i.id === id);
+            if (item) {
+                item.qty += change;
+                if (item.qty < 1) item.qty = 1;
+                renderList();
+            }
+        }
+
+        function deleteItem(id) {
+            if(confirm('Удалить позицию?')) {
+                inventory = inventory.filter(i => i.id !== id);
+                renderList();
+            }
+        }
+
+        function clearAll() {
+            if(confirm("Очистить весь список?")) {
+                inventory = [];
+                renderList();
+            }
+        }
+
+        function renderList(highlightId = null) {
+            const list = document.getElementById('resultList');
+            document.getElementById('countBadge').innerText = inventory.length;
+
+            if (inventory.length === 0) {
+                list.innerHTML = '<div style="text-align:center; color:#555; padding:20px;">Список пуст</div>';
+                return;
+            }
+
+            const sortedInv = [...inventory].sort((a, b) => {
+                if (a.location === b.location) return b.id - a.id;
+                return a.location.localeCompare(b.location);
+            });
+
+            list.innerHTML = sortedInv.map(item => {
+                const isHighlighted = item.id === highlightId;
+                return `
+                <div class="item-card ${isHighlighted ? 'updated' : ''}" id="row-${item.id}">
+                    <div class="action-buttons">
+                        <button class="icon-btn edit-btn" onclick="openEditModal(${item.id})" title="Редактировать название">✏️</button>
+                        <button class="icon-btn del-btn" onclick="deleteItem(${item.id})" title="Удалить">✖</button>
+                    </div>
+                    <div class="loc-badge">📍 ${escapeHtml(item.location)}</div>
+                    <div class="item-row-main">
+                        <div class="item-info">
+                            <div class="item-code">${escapeHtml(item.code)}</div>
+                            <div class="item-name">${escapeHtml(item.name)}</div>
+                        </div>
+                        <div class="qty-control">
+                            <button class="qty-btn" onclick="updateQty(${item.id}, -1)">-</button>
+                            <div class="qty-val">${item.qty}</div>
+                            <button class="qty-btn" onclick="updateQty(${item.id}, 1)">+</button>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+
+            if (highlightId) {
+                setTimeout(() => {
+                    const el = document.getElementById(`row-${highlightId}`);
+                    if(el) el.classList.remove('updated');
+                }, 1000);
+            }
+        }
+
+        // --- Экспорт ---
+        function exportCSV() {
+            if (inventory.length === 0) return showToast("Нет данных");
+
+            let csv = "\uFEFFМесто;Штрихкод;Наименование;Количество;Время\n";
+            
+            inventory.forEach(item => {
+                const safeLoc = item.location.replace(/;/g, ",");
+                const safeName = item.name.replace(/;/g, ",").replace(/\n/g, " ");
+                csv += `${safeLoc};${item.code};${safeName};${item.qty};${item.time}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `sklad_wms_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]);
+        }
+
+        function showToast(msg, isSuccess = false) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.className = isSuccess ? 'toast show success' : 'toast show';
+            setTimeout(() => t.classList.remove('show'), 2000);
+        }
+    </script>
+</body>
+</html>
