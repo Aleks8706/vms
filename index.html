@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WMS Fulfillment Pro — Склад</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #3b82f6; --primary-dark: #2563eb;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --text-sec: #64748b;
+            --border: #e2e8f0; --hover: #f1f5f9; --input-bg: #f8fafc;
+            --radius: 10px; --shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --zone-receiving: #dbeafe; --zone-storage: #dcfce7;
+            --zone-shipping: #fef3c7; --zone-brak: #fee2e2;
+        }
+        [data-theme="dark"] {
+            --primary: #60a5fa; --primary-dark: #3b82f6;
+            --success: #34d399; --warning: #fbbf24; --danger: #f87171;
+            --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --text-sec: #94a3b8;
+            --border: #334155; --hover: #334155; --input-bg: #334155;
+            --shadow: 0 2px 8px rgba(0,0,0,0.3);
+            --zone-receiving: #1e3a8a; --zone-storage: #14532d;
+            --zone-shipping: #713f12; --zone-brak: #7f1d1d;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.3s, color 0.3s; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 1rem; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); flex-wrap: wrap; gap: 0.5rem; }
+        .brand { font-size: 1.2rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 0.4rem; }
+        .controls { display: flex; gap: 0.5rem; align-items: center; }
+        
+        button, .btn { padding: 0.4rem 0.8rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem; background: var(--primary); color: white; transition: all 0.15s; white-space: nowrap; }
+        button:hover, .btn:hover { filter: brightness(0.9); transform: translateY(-1px); }
+        .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: var(--primary); color: white; }
+        .btn-danger { background: var(--danger); } .btn-success { background: var(--success); }
+        .btn-warning { background: var(--warning); color: #000; } .btn-secondary { background: var(--text-sec); }
+        .btn-theme { background: var(--input-bg); border: 1px solid var(--border); color: var(--text); }
+        
+        .user-panel { display: none; align-items: center; gap: 0.4rem; background: var(--input-bg); padding: 0.3rem 0.6rem; border-radius: 16px; border: 1px solid var(--border); font-size: 0.8rem; }
+        .role-badge { font-size: 0.65rem; padding: 1px 6px; border-radius: 8px; background: var(--primary); color: white; text-transform: uppercase; }
+        .role-badge.admin { background: var(--danger); } .role-badge.manager { background: var(--warning); color: #000; } .role-badge.worker { background: var(--success); }
+
+        nav { display: flex; gap: 0.3rem; padding: 0.4rem 1rem; background: var(--card); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; flex-wrap: wrap; }
+        nav::-webkit-scrollbar { display: none; }
+        nav button { background: transparent; color: var(--text-sec); font-weight: 500; white-space: nowrap; font-size: 0.8rem; padding: 0.4rem 0.7rem; border: none; cursor: pointer; border-radius: 6px; }
+        nav button:hover { background: var(--hover); color: var(--primary); }
+        nav button.active { background: var(--primary); color: white; }
+
+        main { padding: 1rem; max-width: 1400px; margin: 0 auto; }
+        .section { display: none; animation: fadeIn 0.2s; } .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .card { background: var(--card); padding: 1rem; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 1rem; border: 1px solid var(--border); transition: background 0.3s, border-color 0.3s; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; flex-wrap: wrap; gap: 0.5rem; }
+        .card h3 { font-size: 1.1rem; font-weight: 700; }
+
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem; }
+
+        .stat-box { background: var(--hover); padding: 0.8rem; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
+        .stat-box .num { font-size: 1.4rem; font-weight: 800; color: var(--primary); }
+        .stat-box .label { font-size: 0.75rem; color: var(--text-sec); margin-top: 0.2rem; }
+
+        .table-wrap { overflow-x: auto; border-radius: 6px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { padding: 0.6rem; text-align: left; background: var(--hover); color: var(--text-sec); font-size: 0.7rem; text-transform: uppercase; border-bottom: 2px solid var(--border); white-space: nowrap; }
+        td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        tr:hover td { background: var(--hover); }
+        tr:last-child td { border-bottom: none; }
+
+        .status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 500; }
+        .status.on { background: rgba(16,185,129,0.15); color: var(--success); }
+        .status.off { background: rgba(100,116,139,0.1); color: var(--text-sec); }
+        .status.busy { background: rgba(245,158,11,0.15); color: var(--warning); }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-sec); }
+        .dot.active { background: var(--success); box-shadow: 0 0 0 2px rgba(16,185,129,0.2); }
+        
+        .timer { font-family: monospace; font-weight: 700; color: var(--primary); font-size: 0.85rem; }
+        
+        input, select, textarea { padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg); color: var(--text); width: 100%; font-size: 0.85rem; transition: border-color 0.2s; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+        
+        .scan-box { text-align: center; padding: 1.2rem; background: var(--hover); border-radius: var(--radius); border: 2px dashed var(--border); margin-bottom: 1rem; }
+        .scan-box input { max-width: 300px; font-size: 1rem; text-align: center; font-family: monospace; }
+        .scan-box input.scanning { animation: pulse 1.5s infinite; border-color: var(--success) !important; }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 50% { box-shadow: 0 0 0 10px rgba(16,185,129,0); } }
+
+        .cell-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; }
+        .cell-item { padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--card); text-align: center; cursor: pointer; transition: all 0.15s; }
+        .cell-item:hover { transform: scale(1.03); box-shadow: var(--shadow); }
+        .cell-item.zone-receiving { background: var(--zone-receiving); }
+        .cell-item.zone-storage { background: var(--zone-storage); }
+        .cell-item.zone-shipping { background: var(--zone-shipping); }
+        .cell-item.zone-brak { background: var(--zone-brak); }
+        .cell-item.empty { border-style: dashed; opacity: 0.7; }
+        .cell-item .loc { font-weight: 700; font-size: 0.85rem; }
+        .cell-item .info { font-size: 0.7rem; color: var(--text-sec); margin-top: 0.2rem; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .modal { background: var(--card); padding: 1.2rem; border-radius: var(--radius); width: 95%; max-width: 550px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.2s; box-shadow: var(--shadow); }
+        @keyframes slideUp { from { transform: translateY(15px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal h2 { margin-bottom: 0.8rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; font-size: 1.1rem; }
+        .form-group { margin-bottom: 0.8rem; } .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.8rem; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 0.4rem; margin-top: 1rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+
+        .toast-container { position: fixed; bottom: 1.2rem; left: 50%; transform: translateX(-50%); z-index: 2000; display: flex; flex-direction: column; gap: 0.4rem; align-items: center; pointer-events: none; }
+        .toast { padding: 0.5rem 1rem; border-radius: 6px; color: white; font-weight: 500; font-size: 0.8rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2); animation: slideUp 0.2s; pointer-events: auto; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.warning { background: var(--warning); color: #000; }
+        .toast.info { background: var(--primary); }
+
+        [data-role="worker"] .admin-only, [data-role="worker"] .manager-only, [data-role="manager"] .admin-only { display: none !important; }
+        
+        .badge-loc { display: inline-block; padding: 2px 6px; background: var(--hover); border-radius: 4px; font-family: monospace; font-size: 0.75rem; border: 1px solid var(--border); }
+        .qty-input { width: 60px !important; text-align: center; display: inline-block; }
+        
+        .zone-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+        .zone-tag.receiving { background: var(--zone-receiving); color: #1d4ed8; }
+        .zone-tag.storage { background: var(--zone-storage); color: #15803d; }
+        .zone-tag.shipping { background: var(--zone-shipping); color: #92400e; }
+        .zone-tag.brak { background: var(--zone-brak); color: #b91c1c; }
+
+        .progress-bar { height: 6px; background: var(--hover); border-radius: 3px; overflow: hidden; margin-top: 0.3rem; }
+        .progress-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
+
+        @media (max-width: 700px) {
+            header { flex-direction: column; padding: 0.5rem; }
+            .controls { justify-content: center; }
+            nav { padding: 0.3rem; }
+            main { padding: 0.5rem; }
+            table { display: block; overflow-x: auto; }
+            th, td { padding: 0.4rem; font-size: 0.75rem; }
+            .cell-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">🏭 WMS Склад</div>
+        <div class="controls">
+            <button class="btn-theme" onclick="W.toggleTheme()" id="themeBtn">🌙 Тёмная</button>
+            <button id="loginBtn" onclick="W.showLogin()">🔐 Вход</button>
+            <div class="user-panel" id="userPanel">
+                <span id="userName">User</span>
+                <span class="role-badge" id="userRole">admin</span>
+                <button class="btn btn-sm btn-danger" onclick="W.logout()">🚪</button>
+            </div>
+            <span id="clock" style="font-size:0.8rem; color:var(--text-sec);"></span>
+        </div>
+    </header>
+
+    <nav id="mainNav">
+        <button class="active" onclick="W.nav('dashboard')">📊 Главная</button>
+        <button onclick="W.nav('zones')">🗺️ Зоны</button>
+        <button onclick="W.nav('cells')">📦 Ячейки</button>
+        <button onclick="W.nav('receiving')">📥 Приемка</button>
+        <button onclick="W.nav('inventory')">📋 Остатки</button>
+        <button onclick="W.nav('movement')">🔄 Перемещения</button>
+        <button onclick="W.nav('picking')">🛒 Отбор</button>
+        <button onclick="W.nav('products')">📋 Товары</button>
+        <button onclick="W.nav('employees')">👥 Сотрудники</button>
+    </nav>
+
+    <main>
+        <section id="dashboard" class="section active">
+            <div class="grid-4" id="statsGrid"></div>
+            <div class="grid-2" style="margin-top:1rem;">
+                <div class="card"><h3>📊 Заполненность зон</h3><div id="zoneStats"></div></div>
+                <div class="card"><h3>🕒 Последние операции</h3><div class="table-wrap"><table><thead><tr><th>Время</th><th>Операция</th><th>Детали</th></tr></thead><tbody id="logTable"></tbody></table></div></div>
+            </div>
+        </section>
+
+        <section id="zones" class="section">
+            <div class="card">
+                <div class="card-header"><h3>🗺️ Зоны склада</h3><button class="btn btn-sm admin-only" onclick="W.modalZone()">➕ Добавить зону</button></div>
+                <div class="grid-2" id="zonesList"></div>
+            </div>
+        </section>
+
+        <section id="cells" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h3>📦 Ячейки склада</h3>
+                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                        <select id="cellZoneFilter" style="width:auto; font-size:0.8rem; padding:0.3rem;" onchange="W.renderCells()"><option value="all">Все зоны</option></select>
+                        <button class="btn btn-sm admin-only" onclick="W.modalCell()">➕ Добавить ячейку</button>
+                        <button class="btn btn-sm admin-only" onclick="W.generateCells()">🏗️ Автогенерация</button>
+                    </div>
+                </div>
+                <div class="cell-grid" id="cellsGrid"></div>
+            </div>
+        </section>
+
+        <section id="receiving" class="section">
+            <div class="card">
+                <div class="card-header"><h3>📥 Приемка товара</h3></div>
+                <div class="scan-box">
+                    <input type="text" id="recvScan" placeholder="Сканируйте штрихкод/SKU" autofocus onfocus="this.classList.add('scanning')" onblur="this.classList.remove('scanning')">
+                    <p style="margin-top:0.4rem; font-size:0.8rem; color:var(--text-sec);">1. Сканируйте товар → 2. Выберите ячейку → 3. Разместить</p>
+                </div>
+                <div id="recvInfo" style="display:none; padding:0.8rem; background:var(--hover); border-radius:6px; margin-bottom:0.8rem;"></div>
+                <div style="display:flex; gap:0.5rem; margin-bottom:0.8rem; flex-wrap:wrap; align-items:end;">
+                    <div style="flex:1; min-width:200px;">
+                        <label style="font-size:0.8rem; font-weight:600;">Целевая ячейка</label>
+                        <select id="recvCell"></select>
+                    </div>
+                    <div style="width:80px;">
+                        <label style="font-size:0.8rem; font-weight:600;">Кол-во</label>
+                        <input type="number" id="recvQty" value="1" min="1" class="qty-input">
+                    </div>
+                    <button class="btn btn-success" onclick="W.placeItem()">✅ Разместить</button>
+                </div>
+                <div class="table-wrap"><table><thead><tr><th>Время</th><th>Товар</th><th>SKU</th><th>Ячейка</th><th>Кол-во</th></tr></thead><tbody id="recvLog"></tbody></table></div>
+            </div>
+        </section>
+
+        <section id="inventory" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h3>📋 Остатки по складу</h3>
+                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                        <select id="invZoneFilter" style="width:auto; font-size:0.8rem; padding:0.3rem;" onchange="W.renderInventory()"><option value="all">Все зоны</option></select>
+                        <input type="text" id="invSearch" placeholder="🔍 Поиск SKU/название" style="width:200px; font-size:0.8rem; padding:0.3rem;" oninput="W.renderInventory()">
+                        <button class="btn btn-sm" onclick="W.exportInventory()">📥 Excel</button>
+                    </div>
+                </div>
+                <div class="table-wrap"><table><thead><tr><th>SKU</th><th>Товар</th><th>Ячейка</th><th>Зона</th><th>Остаток</th><th class="admin-only">Действия</th></tr></thead><tbody id="invTable"></tbody></table></div>
+            </div>
+        </section>
+
+        <section id="movement" class="section">
+            <div class="card">
+                <div class="card-header"><h3>🔄 Перемещение товаров</h3></div>
+                <div class="scan-box">
+                    <input type="text" id="moveScan" placeholder="Сканируйте товар или ячейку" autofocus onfocus="this.classList.add('scanning')" onblur="this.classList.remove('scanning')">
+                    <p style="margin-top:0.4rem; font-size:0.8rem; color:var(--text-sec);">Сканируйте товар для выбора → Укажите целевую ячейку</p>
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-bottom:0.8rem; flex-wrap:wrap; align-items:end;">
+                    <div style="flex:1; min-width:150px;"><label style="font-size:0.8rem; font-weight:600;">Товар</label><input id="moveProd" readonly style="background:var(--hover)"></div>
+                    <div style="width:80px;"><label style="font-size:0.8rem; font-weight:600;">Кол-во</label><input type="number" id="moveQty" value="1" min="1" class="qty-input"></div>
+                    <div style="flex:1; min-width:150px;"><label style="font-size:0.8rem; font-weight:600;">Откуда</label><input id="moveFrom" readonly style="background:var(--hover)"></div>
+                    <div style="flex:1; min-width:150px;"><label style="font-size:0.8rem; font-weight:600;">Куда</label><select id="moveTo"></select></div>
+                    <button class="btn btn-warning" onclick="W.moveItem()">🔄 Переместить</button>
+                </div>
+                <div class="table-wrap"><table><thead><tr><th>Время</th><th>Товар</th><th>Откуда</th><th>Куда</th><th>Кол-во</th></tr></thead><tbody id="moveLog"></tbody></table></div>
+            </div>
+        </section>
+
+        <section id="picking" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h3>🛒 Отбор и отгрузка</h3>
+                    <button class="btn btn-sm" onclick="W.modalOrder()">➕ Новый заказ</button>
+                </div>
+                <div id="ordersList"></div>
+            </div>
+        </section>
+
+        <section id="products" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h3>📋 Справочник товаров</h3>
+                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                        <button class="btn btn-sm admin-only" onclick="W.modalProduct()">➕ Добавить</button>
+                        <button class="btn btn-sm btn-success" onclick="W.exportProducts()">📥 Excel</button>
+                        <label class="btn btn-sm btn-outline" style="cursor:pointer; margin:0;">📤 Импорт <input type="file" accept=".xlsx" style="display:none" onchange="W.importProducts(this)"></label>
+                    </div>
+                </div>
+                <input type="text" id="prodSearch" placeholder="🔍 Поиск..." style="margin-bottom:0.8rem" oninput="W.filterProducts()">
+                <div class="table-wrap"><table><thead><tr><th>SKU</th><th>Название</th><th>Категория</th><th>Цена</th><th>Общий остаток</th><th class="admin-only"></th></tr></thead><tbody id="prodTable"></tbody></table></div>
+            </div>
+        </section>
+
+        <section id="employees" class="section">
+            <div class="card">
+                <div class="card-header"><h3>👥 Сотрудники</h3><button class="btn btn-sm admin-only" onclick="W.modalEmployee()">➕ Добавить</button></div>
+                <div class="table-wrap"><table><thead><tr><th>ID</th><th>ФИО</th><th>Должность</th><th>Ставка</th><th>⏱ Сегодня</th><th>ЗП</th><th class="admin-only">Действия</th></tr></thead><tbody id="empTable"></tbody></table></div>
+            </div>
+        </section>
+    </main>
+
+    <div class="toast-container" id="toasts"></div>
+    <div class="modal-overlay" id="modal" onclick="if(event.target===this)W.closeModal()"><div class="modal" id="modalContent"></div></div>
+
+<script>
+"use strict";
+const W = {
+    user: null,
+    data: {
+        zones: [], cells: [], inventory: [], products: [], orders: [],
+        employees: [], activeTimers: {}, sessions: [], logs: [],
+        theme: 'light', recvScan: null, moveScan: null
+    },
+    scanBuf: '', scanTimer: null,
+
+    init() {
+        this.load(); 
+        this.applyTheme(); 
+        this.updateClock();
+        setInterval(() => this.updateClock(), 1000);
+        this.checkAuth(); 
+        
+        if (this.data.products.length === 0) {
+            this.seedData();
+        } else {
+            this.renderAll();
+        }
+        
+        document.addEventListener('keydown', e => this.handleKey(e));
+        setInterval(() => this.updateTimers(), 1000);
+        
+        setTimeout(() => {
+            const el = document.getElementById('recvScan');
+            if (el) el.focus();
+        }, 300);
+    },
+
+    load() {
+        try { 
+            const s = localStorage.getItem('wms_v3'); 
+            if (s) { 
+                const p = JSON.parse(s); 
+                for (let key in p) {
+                    if (this.data.hasOwnProperty(key)) {
+                        this.data[key] = p[key];
+                    }
+                }
+            } 
+        } catch(e) { console.error(e); }
+    },
+    save() {
+        try { localStorage.setItem('wms_v3', JSON.stringify(this.data)); } catch(e) {}
+        this.renderAll();
+    },
+    seedData() {
+        this.data.zones = [
+            { id: 'Z1', name: 'Приемка', type: 'receiving' },
+            { id: 'Z2', name: 'Хранение A', type: 'storage' },
+            { id: 'Z3', name: 'Хранение B', type: 'storage' },
+            { id: 'Z4', name: 'Отгрузка', type: 'shipping' },
+            { id: 'Z5', name: 'Брак', type: 'brak' }
+        ];
+        this.data.products = [
+            { id: 'SKU001', name: 'Футболка White L', cat: 'Одежда', price: 890, barcode: '4601' },
+            { id: 'SKU002', name: 'Коробка 20x20', cat: 'Упаковка', price: 55, barcode: '4602' },
+            { id: 'SKU003', name: 'Пленка стрейч', cat: 'Упаковка', price: 450, barcode: '4603' }
+        ];
+        let idx = 0;
+        const zoneMap = [
+            { zid: 'Z1', count: 4, letter: 'A' },
+            { zid: 'Z2', count: 16, letter: 'B' },
+            { zid: 'Z3', count: 16, letter: 'C' },
+            { zid: 'Z4', count: 4, letter: 'D' },
+            { zid: 'Z5', count: 4, letter: 'E' }
+        ];
+        zoneMap.forEach(z => {
+            for (let i = 1; i <= z.count; i++) {
+                this.data.cells.push({
+                    id: 'C' + String(idx).padStart(3, '0'),
+                    zoneId: z.zid,
+                    location: `${z.letter}-${String(Math.ceil(i/4)).padStart(2,'0')}-${((i-1)%4)+1}`,
+                    capacity: 100
+                });
+                idx++;
+            }
+        });
+        this.data.inventory = [
+            { cellId: 'C005', sku: 'SKU001', qty: 50 },
+            { cellId: 'C006', sku: 'SKU001', qty: 30 },
+            { cellId: 'C025', sku: 'SKU002', qty: 120 },
+            { cellId: 'C040', sku: 'SKU003', qty: 15 }
+        ];
+        this.addLog('Система', 'Инициализация склада');
+        this.save();
+    },
+
+    // === АВТОРИЗАЦИЯ ===
+    checkAuth() { 
+        const u = localStorage.getItem('wms_user'); 
+        if (u) { this.user = JSON.parse(u); this.updateAuthUI(); } 
+    },
+    showLogin() {
+        document.getElementById('modalContent').innerHTML = `
+            <h2>🔐 Вход</h2><p style="color:var(--text-sec); margin-bottom:0.8rem; font-size:0.85rem;">Выберите роль:</p>
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.8rem;">
+                <button class="btn" onclick="W.login('admin')">👑 Админ</button>
+                <button class="btn btn-outline" onclick="W.login('manager')">📋 Менеджер</button>
+                <button class="btn btn-outline" onclick="W.login('worker')">👷 Сотрудник</button>
+            </div>
+            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button></div>`;
+        document.getElementById('modal').style.display = 'flex';
+    },
+    login(role) {
+        this.user = { id: Date.now(), name: {admin:'Админ',manager:'Менеджер',worker:'Сотрудник'}[role], role };
+        localStorage.setItem('wms_user', JSON.stringify(this.user));
+        this.updateAuthUI(); 
+        this.closeModal(); 
+        this.toast('✅ Авторизация успешна', 'success');
+    },
+    logout() { 
+        this.user = null; 
+        localStorage.removeItem('wms_user'); 
+        this.updateAuthUI(); 
+        this.nav('dashboard'); 
+        this.toast('🚪 Вы вышли', 'warning'); 
+    },
+    updateAuthUI() {
+        const lb = document.getElementById('loginBtn'), up = document.getElementById('userPanel');
+        if (this.user) {
+            lb.style.display='none'; 
+            up.style.display='flex';
+            document.getElementById('userName').textContent = this.user.name;
+            const rb = document.getElementById('userRole'); 
+            rb.textContent = this.user.role; 
+            rb.className = 'role-badge ' + this.user.role;
+            document.body.setAttribute('data-role', this.user.role);
+        } else { 
+            lb.style.display='block'; 
+            up.style.display='none'; 
+            document.body.removeAttribute('data-role'); 
+        }
+    },
+    can(action) { 
+        if (!this.user) return false; 
+        return this.user.role === 'admin' || action === 'read' || (action === 'write' && this.user.role === 'manager'); 
+    },
+
+    // === ТЕМА И ЧАСЫ ===
+    toggleTheme() { 
+        this.data.theme = this.data.theme === 'light' ? 'dark' : 'light'; 
+        this.applyTheme(); 
+        this.save(); 
+    },
+    applyTheme() {
+        document.body.setAttribute('data-theme', this.data.theme);
+        document.getElementById('themeBtn').textContent = this.data.theme === 'dark' ? '☀️ Светлая' : '🌙 Тёмная';
+    },
+    updateClock() { 
+        const n = new Date(); 
+        document.getElementById('clock').textContent = n.toLocaleTimeString('ru-RU'); 
+    },
+
+    // === СКАНЕР ===
+    handleKey(e) {
+        const el = document.activeElement;
+        if (document.getElementById('modal').style.display === 'flex') return;
+        if (el?.tagName === 'INPUT' && el.id !== 'recvScan' && el.id !== 'moveScan') return;
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const code = el?.value?.trim() || this.scanBuf.trim();
+            if (code && code.length >= 2) {
+                this.processScan(code);
+                if (el) el.value = '';
+            }
+            this.scanBuf = '';
+            return;
+        }
+        if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            this.scanBuf += e.key;
+            clearTimeout(this.scanTimer);
+            this.scanTimer = setTimeout(() => { this.scanBuf = ''; }, 150);
+        }
+    },
+    processScan(code) {
+        const emp = this.data.employees.find(e => e.id === code || e.barcode === code);
+        if (emp) return this.toggleShift(emp.id);
+        
+        const prod = this.data.products.find(p => p.id === code || p.barcode === code);
+        if (prod) {
+            const activeSection = document.querySelector('.section.active')?.id;
+            if (activeSection === 'receiving') {
+                this.data.recvScan = prod;
+                this.showRecvInfo(prod);
+            } else if (activeSection === 'movement') {
+                this.data.moveScan = prod;
+                document.getElementById('moveProd').value = `${prod.name} (${prod.id})`;
+                const inv = this.data.inventory.find(i => i.sku === prod.id);
+                document.getElementById('moveFrom').value = inv ? this.data.cells.find(c => c.id === inv.cellId)?.location || inv.cellId : 'Не найдено';
+            } else {
+                this.toast(`📦 ${prod.name} | SKU: ${prod.id} | Barcode: ${prod.barcode}`, 'info');
+            }
+            return;
+        }
+
+        const cell = this.data.cells.find(c => c.id === code || c.location === code);
+        if (cell) {
+            const activeSection = document.querySelector('.section.active')?.id;
+            if (activeSection === 'receiving') {
+                document.getElementById('recvCell').value = cell.id;
+            } else if (activeSection === 'movement') {
+                document.getElementById('moveTo').value = cell.id;
+            }
+            this.toast(`📍 Ячейка: ${cell.location} (${this.getZoneName(cell.zoneId)})`, 'info');
+            return;
+        }
+        this.toast('❌ Не распознано: ' + code, 'error');
+    },
+
+    // === УЧЁТ ВРЕМЕНИ ===
+    toggleShift(empId) {
+        const now = Date.now(), today = new Date().toISOString().split('T')[0];
+        const emp = this.data.employees.find(e => e.id === empId);
+        if (!emp) return this.toast('❌ Сотрудник не найден', 'error');
+        if (this.data.activeTimers[empId]) {
+            const start = this.data.activeTimers[empId];
+            const dur = Math.floor((now - start) / 1000);
+            delete this.data.activeTimers[empId];
+            this.data.sessions.push({ empId, date: today, start, end: now, duration: dur });
+            const h = Math.floor(dur/3600), m = Math.floor((dur%3600)/60);
+            const pay = ((dur/3600)*emp.rate).toFixed(0);
+            this.toast(`✅ ${emp.name}: ${h}ч ${m}м | ЗП: ${pay}₽`, 'success');
+        } else {
+            this.data.activeTimers[empId] = now;
+            this.toast(`🔵 ${emp.name} начал смену`, 'success');
+        }
+        this.save();
+    },
+    calcToday(empId) {
+        let s = 0, today = new Date().toISOString().split('T')[0];
+        this.data.sessions.forEach(x => { if (x.empId === empId && x.date === today) s += x.duration; });
+        if (this.data.activeTimers[empId]) s += Math.floor((Date.now() - this.data.activeTimers[empId]) / 1000);
+        return s;
+    },
+    updateTimers() {
+        document.querySelectorAll('.live-timer').forEach(el => {
+            const empId = el.dataset.emp;
+            if (this.data.activeTimers[empId]) {
+                const sec = Math.floor((Date.now() - this.data.activeTimers[empId]) / 1000);
+                el.textContent = `${String(Math.floor(sec/3600)).padStart(2,'0')}:${String(Math.floor((sec%3600)/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
+            }
+        });
+    },
+
+    // === ЛОГИРОВАНИЕ ===
+    addLog(actor, msg) {
+        this.data.logs.unshift({ time: new Date().toLocaleTimeString('ru-RU'), actor: this.user ? `${actor} (${this.user.name})` : actor, msg });
+        if (this.data.logs.length > 100) this.data.logs.pop();
+    },
+
+    // === ЗОНЫ ===
+    renderZones() {
+        const el = document.getElementById('zonesList'); 
+        if (!el) return;
+        el.innerHTML = this.data.zones.map(z => {
+            const cells = this.data.cells.filter(c => c.zoneId === z.id);
+            const used = cells.filter(c => this.data.inventory.some(i => i.cellId === c.id && i.qty > 0)).length;
+            const totalQty = this.data.inventory.filter(i => cells.some(c => c.id === i.cellId)).reduce((s, i) => s + i.qty, 0);
+            return `<div class="card" style="border-left: 4px solid var(--zone-${z.type});">
+                <div style="display:flex; justify-content:space-between; align-items:start;">
+                    <div><h4>${z.name}</h4><span class="zone-tag ${z.type}">${z.type}</span></div>
+                    <button class="btn btn-sm btn-danger admin-only" onclick="W.delZone('${z.id}')">🗑️</button>
+                </div>
+                <div style="margin-top:0.5rem; font-size:0.8rem; color:var(--text-sec);">
+                    <div>Ячеек: ${cells.length} | Занято: ${used}</div>
+                    <div>Товаров: ${totalQty} шт</div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${cells.length ? (used/cells.length*100) : 0}%; background:var(--zone-${z.type})"></div></div>
+                </div>
+            </div>`;
+        }).join('');
+    },
+    modalZone() {
+        if (!this.can('write')) return this.toast('❌ Нет прав', 'error');
+        document.getElementById('modalContent').innerHTML = `
+            <h2>➕ Зона склада</h2>
+            <div class="form-group"><label>Название</label><input id="zName"></div>
+            <div class="form-group"><label>Тип</label><select id="zType"><option value="receiving">Приемка</option><option value="storage">Хранение</option><option value="shipping">Отгрузка</option><option value="brak">Брак</option></select></div>
+            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button><button class="btn" onclick="W.addZone()">Создать</button></div>`;
+        document.getElementById('modal').style.display = 'flex';
+    },
+    addZone() {
+        const name = document.getElementById('zName').value.trim();
+        if (!name) return alert('Введите название');
+        this.data.zones.push({ id: 'Z' + Date.now().toString().slice(-3), name: name, type: document.getElementById('zType').value });
+        this.save(); 
+        this.closeModal(); 
+        this.toast('✅ Зона создана', 'success');
+    },
+    delZone(id) {
+        if (!confirm('Удалить зону и все ячейки?')) return;
+        const cells = this.data.cells.filter(c => c.zoneId === id).map(c => c.id);
+        this.data.inventory = this.data.inventory.filter(i => !cells.includes(i.cellId));
+        this.data.cells = this.data.cells.filter(c => c.zoneId !== id);
+        this.data.zones = this.data.zones.filter(z => z.id !== id);
+        this.save(); 
+        this.toast('🗑️ Зона удалена', 'success');
+    },
+
+    // === ЯЧЕЙКИ ===
+    renderCells() {
+        const el = document.getElementById('cellsGrid'); 
+        if (!el) return;
+        const zoneFilter = document.getElementById('cellZoneFilter')?.value || 'all';
+        const cells = zoneFilter === 'all' ? this.data.cells : this.data.cells.filter(c => c.zoneId === zoneFilter);
+        
+        el.innerHTML = cells.map(c => {
+            const zone = this.data.zones.find(z => z.id === c.zoneId);
+            const items = this.data.inventory.filter(i => i.cellId === c.id && i.qty > 0);
+            const totalQty = items.reduce((s, i) => s + i.qty, 0);
+            const isEmpty = items.length === 0;
+            return `<div class="cell-item zone-${zone?.type || 'storage'} ${isEmpty ? 'empty' : ''}" onclick="W.cellDetail('${c.id}')">
+                <div class="loc">${c.location}</div>
+                <div class="info">${isEmpty ? 'Пусто' : items.length + ' тов.<br>' + totalQty + ' шт'}</div>
+            </div>`;
+        }).join('');
+    },
+    cellDetail(cellId) {
+        const cell = this.data.cells.find(c => c.id === cellId);
+        const zone = this.data.zones.find(z => z.id === cell.zoneId);
+        const items = this.data.inventory.filter(i => i.cellId === cellId && i.qty > 0);
+        let html = `<h2>📍 Ячейка: ${cell.location}</h2>
+            <p style="color:var(--text-sec); margin-bottom:0.8rem;">Зона: ${zone?.name || cell.zoneId} | ID: ${cell.id} | Вместимость: ${cell.capacity}</p>`;
+        if (items.length === 0) {
+            html += '<p style="color:var(--text-sec);">Ячейка пуста</p>';
+        } else {
+            html += '<div class="table-wrap"><table><thead><tr><th>SKU</th><th>Товар</th><th>Кол-во</th></tr></thead><tbody>';
+            items.forEach(i => {
+                const p = this.data.products.find(x => x.id === i.sku);
+                html += `<tr><td>${i.sku}</td><td>${p?.name || '-'}</td><td><b>${i.qty}</b></td></tr>`;
+            });
+            html += '</tbody></table></div>';
+        }
+        html += `<div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Закрыть</button></div>`;
+        document.getElementById('modalContent').innerHTML = html;
+        document.getElementById('modal').style.display = 'flex';
+    },
+    modalCell() {
+        if (!this.can('write')) return this.toast('❌ Нет прав', 'error');
+        const opts = this.data.zones.map(z => `<option value="${z.id}">${z.name} (${z.type})</option>`).join('');
+        document.getElementById('modalContent').innerHTML = `
+            <h2>➕ Ячейка</h2>
+            <div class="form-group"><label>Локация (например: A-01-02)</label><input id="cLoc"></div>
+            <div class="form-group"><label>Зона</label><select id="cZone">${opts}</select></div>
+            <div class="form-group"><label>Вместимость</label><input id="cCap" type="number" value="100"></div>
+            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button><button class="btn" onclick="W.addCell()">Создать</button></div>`;
+        document.getElementById('modal').style.display = 'flex';
+    },
+    addCell() {
+        const loc = document.getElementById('cLoc').value.trim();
+        if (!loc) return alert('Введите локацию');
+        this.data.cells.push({ 
+            id: 'C' + Date.now().toString().slice(-3), 
+            zoneId: document.getElementById('cZone').value, 
+            location: loc, 
+            capacity: Number(document.getElementById('cCap').value) || 100 
+        });
+        this.save(); 
+        this.closeModal(); 
+        this.toast('✅ Ячейка создана', 'success');
+    },
+    generateCells() {
+        if (!confirm('Сгенерировать 4 ячейки для каждой зоны?')) return;
+        this.data.zones.forEach(z => {
+            const count = this.data.cells.filter(c => c.zoneId === z.id).length;
+            if (count < 4) {
+                for (let i = count; i < count + 4; i++) {
+                    this.data.cells.push({ 
+                        id: 'C' + Date.now().toString().slice(-3) + i, 
+                        zoneId: z.id, 
+                        location: `${z.name.charAt(0)}-${String(Math.floor(i/4)+1).padStart(2,'0')}-${(i%4)+1}`, 
+                        capacity: 100 
+                    });
+                }
+            }
+        });
+        this.save(); 
+        this.toast('✅ Ячейки сгенерированы', 'success');
+    },
+
+    // === ПРИЕМКА ===
+    showRecvInfo(prod) {
+        const el = document.getElementById('recvInfo');
+        el.style.display = 'block';
+        el.innerHTML = `<strong>📦 ${prod.name}</strong><br><span style="font-size:0.8rem; color:var(--text-sec);">SKU: ${prod.id} | Barcode: ${prod.barcode} | Цена: ${prod.price}₽</span>`;
+    },
+    placeItem() {
+        const prod = this.data.recvScan;
+        if (!prod) return this.toast('❌ Сначала отсканируйте товар', 'error');
+        const cellId = document.getElementById('recvCell').value;
+        const qty = parseInt(document.getElementById('recvQty').value) || 1;
+        if (!cellId) return this.toast('❌ Выберите ячейку', 'error');
+        if (qty <= 0) return this.toast('❌ Кол-во должно быть > 0', 'error');
+
+        const existing = this.data.inventory.find(i => i.cellId === cellId && i.sku === prod.id);
+        if (existing) {
+            existing.qty += qty;
+        } else {
+            this.data.inventory.push({ cellId, sku: prod.id, qty });
+        }
+
+        this.addLog('Приемка', `${prod.name} → ${cellId} x${qty}`);
+        this.toast(`✅ ${prod.name} размещен в ${cellId} x${qty}`, 'success');
+        
+        const tb = document.getElementById('recvLog');
+        if (tb) {
+            tb.insertAdjacentHTML('afterbegin', `<tr><td>${new Date().toLocaleTimeString('ru-RU')}</td><td>${prod.name}</td><td>${prod.id}</td><td><span class="badge-loc">${this.data.cells.find(c => c.id === cellId)?.location || cellId}</span></td><td>${qty}</td></tr>`);
+        }
+        
+        this.data.recvScan = null;
+        document.getElementById('recvInfo').style.display = 'none';
+        document.getElementById('recvScan').value = '';
+        document.getElementById('recvScan').focus();
+        this.save();
+    },
+
+    // === ОСТАТКИ ===
+    renderInventory() {
+        const el = document.getElementById('invTable'); 
+        if (!el) return;
+        const zoneFilter = document.getElementById('invZoneFilter')?.value || 'all';
+        const search = document.getElementById('invSearch')?.value.toLowerCase() || '';
+        
+        let inv = this.data.inventory.filter(i => i.qty > 0);
+        if (search) {
+            const prodIds = this.data.products.filter(p => p.id.toLowerCase().includes(search) || p.name.toLowerCase().includes(search)).map(p => p.id);
+            inv = inv.filter(i => prodIds.includes(i.sku));
+        }
+        if (zoneFilter !== 'all') {
+            const zoneCells = this.data.cells.filter(c => c.zoneId === zoneFilter).map(c => c.id);
+            inv = inv.filter(i => zoneCells.includes(i.cellId));
+        }
+
+        el.innerHTML = inv.map(i => {
+            const p = this.data.products.find(x => x.id === i.sku);
+            const c = this.data.cells.find(x => x.id === i.cellId);
+            const z = c ? this.data.zones.find(x => x.id === c.zoneId) : null;
+            return `<tr>
+                <td><span class="badge-loc">${i.sku}</span></td>
+                <td>${p?.name || '-'}</td>
+                <td><span class="badge-loc">${c?.location || i.cellId}</span></td>
+                <td><span class="zone-tag ${z?.type || 'storage'}">${z?.name || '-'}</span></td>
+                <td><b>${i.qty}</b></td>
+                <td class="admin-only"><button class="btn btn-sm btn-danger" onclick="W.delInv('${i.cellId}','${i.sku}')">🗑️</button></td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--text-sec); padding:1rem;">Нет остатков</td></tr>';
+
+        // Обновить фильтр зон
+        const sel = document.getElementById('invZoneFilter');
+        if (sel) {
+            while (sel.options.length > 1) sel.remove(1);
+            this.data.zones.forEach(z => { 
+                const opt = document.createElement('option'); 
+                opt.value = z.id; 
+                opt.textContent = z.name; 
+                sel.appendChild(opt); 
+            });
+        }
+    },
+    delInv(cellId, sku) {
+        if (!confirm('Удалить остаток?')) return;
+        this.data.inventory = this.data.inventory.filter(i => !(i.cellId === cellId && i.sku === sku));
+        this.save(); 
+        this.toast('🗑️ Удалено', 'success');
+    },
+    exportInventory() {
+        if (typeof XLSX === 'undefined') return this.toast('❌ XLSX не загружена', 'error');
+        const rows = this.data.inventory.filter(i => i.qty > 0).map(i => {
+            const p = this.data.products.find(x => x.id === i.sku);
+            const c = this.data.cells.find(x => x.id === i.cellId);
+            return { SKU: i.sku, Товар: p?.name || i.sku, Ячейка: c?.location || i.cellId, Зона: this.getZoneName(c?.zoneId), Остаток: i.qty };
+        });
+        if (rows.length === 0) return this.toast('❌ Нет данных для экспорта', 'error');
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new(); 
+        XLSX.utils.book_append_sheet(wb, ws, 'Остатки');
+        XLSX.writeFile(wb, `WMS_Inventory_${new Date().toISOString().split('T')[0]}.xlsx`);
+        this.toast('📥 Экспорт остатков', 'success');
+    },
+
+    // === ПЕРЕМЕЩЕНИЯ ===
+    moveItem() {
+        const prod = this.data.moveScan;
+        const qty = parseInt(document.getElementById('moveQty').value) || 1;
+        const toCell = document.getElementById('moveTo').value;
+        if (!prod) return this.toast('❌ Отсканируйте товар', 'error');
+        if (!toCell) return this.toast('❌ Выберите целевую ячейку', 'error');
+        if (qty <= 0) return this.toast('❌ Кол-во > 0', 'error');
+
+        const invFrom = this.data.inventory.find(i => i.sku === prod.id && i.qty >= qty);
+        if (!invFrom) return this.toast('❌ Нет достаточного остатка в одной ячейке', 'error');
+
+        const fromCell = invFrom.cellId;
+        if (fromCell === toCell) return this.toast('❌ Откуда и куда совпадают', 'error');
+
+        invFrom.qty -= qty;
+        if (invFrom.qty === 0) this.data.inventory = this.data.inventory.filter(i => i.qty > 0);
+
+        const existing = this.data.inventory.find(i => i.cellId === toCell && i.sku === prod.id);
+        if (existing) { existing.qty += qty; }
+        else { this.data.inventory.push({ cellId: toCell, sku: prod.id, qty }); }
+
+        this.addLog('Перемещение', `${prod.name}: ${fromCell} → ${toCell} x${qty}`);
+        this.toast(`🔄 Перемещено: ${prod.name} x${qty}`, 'success');
+
+        const tb = document.getElementById('moveLog');
+        if (tb) {
+            const fromLoc = this.data.cells.find(c => c.id === fromCell)?.location || fromCell;
+            const toLoc = this.data.cells.find(c => c.id === toCell)?.location || toCell;
+            tb.insertAdjacentHTML('afterbegin', `<tr><td>${new Date().toLocaleTimeString('ru-RU')}</td><td>${prod.name}</td><td><span class="badge-loc">${fromLoc}</span></td><td><span class="badge-loc">${toLoc}</span></td><td>${qty}</td></tr>`);
+        }
+        
+        this.data.moveScan = null;
+        document.getElementById('moveProd').value = '';
+        document.getElementById('moveFrom').value = '';
+        document.getElementById('moveScan').value = '';
+        document.getElementById('moveScan').focus();
+        this.save();
+    },
+
+    // === ОТБОР ===
+    renderOrders() {
+        const el = document.getElementById('ordersList'); 
+        if (!el) return;
+        if (this.data.orders.length === 0) {
+            el.innerHTML = '<p style="color:var(--text-sec); text-align:center; padding:1rem;">Нет заказов. Нажмите "➕ Новый заказ"</p>';
+            return;
+        }
+        el.innerHTML = this.data.orders.map(o => {
+            const items = (o.items || []).map(it => {
+                const p = this.data.products.find(x => x.id === it.sku);
+                const avail = this.data.inventory.filter(i => i.sku === it.sku).reduce((s, i) => s + i.qty, 0);
+                return `<div style="display:flex; justify-content:space-between; padding:0.3rem 0; border-bottom:1px solid var(--border); font-size:0.85rem;">
+                    <span>${p?.name || it.sku} (${avail} на складе)</span><span>${it.qty} шт</span>
+                </div>`;
+            }).join('');
+            return `<div class="card" style="border-left: 4px solid ${o.status === 'completed' ? 'var(--success)' : o.status === 'picking' ? 'var(--warning)' : 'var(--primary)'};">
+                <div style="display:flex; justify-content:space-between; align-items:start;">
+                    <div><h4>Заказ ${o.id}</h4><span style="font-size:0.8rem; color:var(--text-sec);">${o.date} | ${o.contr}</span></div>
+                    <span class="status ${o.status === 'completed' ? 'on' : o.status === 'picking' ? 'busy' : 'off'}">${o.status}</span>
+                </div>
+                <div style="margin:0.5rem 0; padding:0.5rem; background:var(--hover); border-radius:4px;">${items}</div>
+                <div style="display:flex; gap:0.3rem;">
+                    <button class="btn btn-sm btn-success" onclick="W.pickOrder('${o.id}')" ${o.status !== 'new' ? 'disabled' : ''}>📦 Подобрать</button>
+                    <button class="btn btn-sm btn-danger" onclick="W.delOrder('${o.id}')">🗑️</button>
+                </div>
+            </div>`;
+        }).join('');
+    },
+    modalOrder() {
+        if (!this.can('write')) return this.toast('❌ Нет прав', 'error');
+        document.getElementById('modalContent').innerHTML = `
+            <h2>➕ Новый заказ</h2>
+            <div class="form-group"><label>Контрагент / № заказа</label><input id="oContr"></div>
+            <div id="orderItems">
+                <div class="form-group"><label>SKU</label><input class="o-sku" placeholder="SKU001"></div>
+                <div class="form-group"><label>Кол-во</label><input class="o-qty" type="number" value="1"></div>
+            </div>
+            <button class="btn btn-sm btn-outline" onclick="W.addOrderRow()">+ Позиция</button>
+            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button><button class="btn" onclick="W.createOrder()">Создать</button></div>`;
+        document.getElementById('modal').style.display = 'flex';
+    },
+    addOrderRow() {
+        document.getElementById('orderItems').insertAdjacentHTML('beforeend', `
+            <div class="form-group"><label>SKU</label><input class="o-sku" placeholder="SKU..."></div>
+            <div class="form-group"><label>Кол-во</label><input class="o-qty" type="number" value="1"></div>`);
+    },
+    createOrder() {
+        const skus = document.querySelectorAll('.o-sku');
+        const qtys = document.querySelectorAll('.o-qty');
+        const items = [];
+        for(let i=0; i<skus.length; i++) {
+            if (skus[i].value) items.push({ sku: skus[i].value.trim(), qty: parseInt(qtys[i].value) || 1 });
+        }
+        if (items.length === 0) return alert('Добавьте хотя бы одну позицию');
+        this.data.orders.push({ 
+            id: 'ORD' + Date.now().toString().slice(-4), 
+            date: new Date().toISOString().split('T')[0], 
+            contr: document.getElementById('oContr').value.trim() || '-', 
+            status: 'new', 
+            items 
+        });
+        this.save(); 
+        this.closeModal(); 
+        this.toast('✅ Заказ создан', 'success');
+    },
+    pickOrder(orderId) {
+        const order = this.data.orders.find(o => o.id === orderId);
+        if (!order) return;
+        let errors = [];
+        order.items.forEach(it => {
+            const available = this.data.inventory.filter(i => i.sku === it.sku).reduce((s, i) => s + i.qty, 0);
+            if (available < it.qty) errors.push(`${it.sku}: нужно ${it.qty}, доступно ${available}`);
+        });
+        if (errors.length > 0) return this.toast('❌ Недостаточно: ' + errors.join(', '), 'error');
+        
+        order.items.forEach(it => {
+            let remaining = it.qty;
+            while (remaining > 0) {
+                const inv = this.data.inventory.find(i => i.sku === it.sku && i.qty > 0);
+                if (!inv) break;
+                const take = Math.min(inv.qty, remaining);
+                inv.qty -= take;
+                remaining -= take;
+            }
+        });
+        this.data.inventory = this.data.inventory.filter(i => i.qty > 0);
+        order.status = 'completed';
+        this.addLog('Отбор', `Заказ ${orderId} подобран`);
+        this.toast('✅ Заказ подобран', 'success');
+        this.save();
+    },
+    delOrder(id) { 
+        if (confirm('Удалить заказ?')) { 
+            this.data.orders = this.data.orders.filter(o => o.id !== id); 
+            this.save(); 
+            this.toast('🗑️ Удалено', 'success'); 
+        } 
+    },
+
+    // === ТОВАРЫ ===
+    renderProducts() {
+        const el = document.getElementById('prodTable'); 
+        if (!el) return;
+        el.innerHTML = this.data.products.map((p, i) => {
+            const totalQty = this.data.inventory.filter(inv => inv.sku === p.id).reduce((s, inv) => s + inv.qty, 0);
+            return `<tr><td><span class="badge-loc">${p.id}</span></td><td>${p.name}</td><td>${p.cat}</td><td>${p.price}₽</td><td><b>${totalQty}</b></td><td class="admin-only"><button class="btn btn-sm btn-danger" onclick="W.delProd(${i})">🗑️</button></td></tr>`;
+        }).join('');
+    },
+    filterProducts() {
+        const q = document.getElementById('prodSearch').value.toLowerCase();
+        document.querySelectorAll('#prodTable tr').forEach(tr => tr.style.display = tr.innerText.toLowerCase().includes(q) ? '' : 'none');
+    },
+    modalProduct() {
+        if (!this.can('write')) return this.toast('❌ Нет прав', 'error');
+        document.getElementById('modalContent').innerHTML = `
+            <h2>➕ Товар</h2>
+            <div class="form-group"><label>SKU</label><input id="pSku"></div>
+            <div class="form-group"><label>Название</label><input id="pName"></div>
+            <div class="form-group"><label>Категория</label><input id="pCat"></div>
+            <div class="form-group"><label>Цена</label><input id="pPrice" type="number"></div>
+            <div class="form-group"><label>Штрихкод</label><input id="pBar"></div>
+            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button><button class="btn" onclick="W.addProd()">Сохранить</button></div>`;
+        document.getElementById('modal').style.display = 'flex';
+    },
+    addProd() {
+        if (!document.getElementById('pName').value.trim()) return;
+        this.data.products.push({ 
+            id: document.getElementById('pSku').value.trim() || 'SKU' + Date.now().toString().slice(-4), 
+            name: document.getElementById('pName').value.trim(), 
+            cat: document.getElementById('pCat').value.trim() || 'Общее', 
+            price: Number(document.getElementById('pPrice').value) || 0, 
+            barcode: document.getElementById('pBar').value.trim() || '' 
+        });
+        this.save(); 
+        this.closeModal(); 
+        this.toast('✅ Добавлен', 'success');
+    },
+    delProd(i) { 
+        if (!confirm('Удалить?')) return; 
+        this.data.products.splice(i, 1); 
+        this.save(); 
+        this.toast('🗑️ Удалено', 'success'); 
+    },
+    exportProducts() {
+        if (typeof XLSX === 'undefined') return this.toast('❌ XLSX не загружена', 'error');
+        const ws = XLSX.utils.json_to_sheet(this.data.products.map(p => {
+            const qty = this.data.inventory.filter(i => i.sku === p.id).reduce((s, i) => s + i.qty, 0);
+            return { SKU: p.id, Название: p.name, Категория: p.cat, Цена: p.price, Остаток: qty, Штрихкод: p.barcode };
+        }));
+        const wb = XLSX.utils.book_new(); 
+        XLSX.utils.book_append_sheet(wb, ws, 'Товары');
+        XLSX.writeFile(wb, `WMS_Products_${new Date().toISOString().split('T')[0]}.xlsx`);
+        this.toast('📥 Экспорт товаров', 'success');
+    },
+    importProducts(inp) {
+        if (!this.can('write') || !inp.files[0]) return;
+        if (typeof XLSX === 'undefined') return this.toast('❌ XLSX не загружена', 'error');
+        const r = new FileReader();
+        r.onload = e => {
+            try {
+                const wb = XLSX.read(e.target.result, { type: 'array' });
+                const d = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                let added = 0;
+                d.forEach(row => {
+                    if (!row.SKU && !row['SKU']) return;
+                    const id = row.SKU || row['SKU'];
+                    const ex = this.data.products.find(p => p.id === id);
+                    const obj = { id: id, name: row['Название'] || row.Name || 'Без имени', cat: row['Категория'] || row.Cat || 'Импорт', price: row['Цена'] || row.Price || 0, barcode: row['Штрихкод'] || '' };
+                    if (!ex) { this.data.products.push(obj); added++; } 
+                    else Object.assign(ex, obj);
+                });
+                this.save(); 
+                this.toast(`✅ Импортировано: ${added}`, 'success');
+            } catch (e) { this.toast('❌ Ошибка импорта: ' + e.message, 'error'); }
+            inp.value = '';
+        };
+        r.readAsArrayBuffer(inp.files[0]);
+    },
+
+    // === СОТРУДНИКИ ===
+    renderEmployees() {
+        const el = document.getElementById('empTable'); 
+        if (!el) return;
+        el.innerHTML = this.data.employees.map((e, i) => {
+            const sec = this.calcToday(e.id);
+            const isW = !!this.data.activeTimers[e.id];
+            const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+            const pay = Math.round((sec / 3600) * e.rate);
+            return `<tr>
+                <td>${e.id}</td><td>${e.name}</td><td>${e.role}</td><td>${e.rate}₽/ч</td>
+                <td><span class="status ${isW ? 'on' : 'off'}"><span class="dot ${isW ? 'active' : ''}"></span>${isW ? 'На смене' : 'Оффлайн'}</span></td>
+                <td><div>${h}ч ${m}м</div><div class="live-timer" data-emp="${e.id}">${isW ? this.formatMs(Date.now() - this.data.activeTimers[e.id]) : '--:--:--'}</div></td>
+                <td><b>${pay}₽</b></td>
+                <td class="admin-only"><button class="btn btn-sm ${isW ? 'btn-danger' : 'btn-success'}" onclick="W.toggleShift('${e.id}')">${isW ? '🔚 Завершить' : '🔵 Начать'}</button></td>
+            </tr>`;
+        }).join('');
+    },
+    modalEmployee() {
+        if (!this.can('write')) return this.toast('❌ Нет прав', 'error');
+        document.getElementById('modalContent').innerHTML = `
+            <h2>➕ Сотрудник</h2>
+            <div class="form-group"><label>ФИО</label><input id="mName"></div>
+            <div class="form-group"><label>Должность</label><input id="mRole"></div>
+            <div class="form-group"><label>Ставка (₽/ч)</label><input id="mRate" type="number" value="250"></div>
+            <div class="form-group"><label>QR/Штрихкод</label><input id="mBar" placeholder="EMP001"></div>
+            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button><button class="btn" onclick="W.addEmp()">Сохранить</button></div>`;
+        document.getElementById('modal').style.display = 'flex';
+    },
+    addEmp() {
+        if (!document.getElementById('mName').value.trim()) return;
+        this.data.employees.push({ 
+            id: 'E' + Date.now().toString().slice(-4), 
+            name: document.getElementById('mName').value.trim(), 
+            role: document.getElementById('mRole').value.trim() || 'Сотрудник', 
+            rate: Number(document.getElementById('mRate').value) || 200, 
+            barcode: document.getElementById('mBar').value.trim() || '' 
+        });
+        this.save(); 
+        this.closeModal(); 
+        this.toast('✅ Добавлен', 'success');
+    },
+    formatMs(ms) { 
+        const s = Math.floor(ms / 1000); 
+        return `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; 
+    },
+
+    // === DASHBOARD ===
+    renderDash() {
+        const sg = document.getElementById('statsGrid'); 
+        if (!sg) return;
+        const totalProducts = this.data.products.length;
+        const totalCells = this.data.cells.length;
+        const uniqueUsedCells = new Set(this.data.inventory.filter(i => i.qty > 0).map(i => i.cellId)).size;
+        const totalQty = this.data.inventory.reduce((s, i) => s + i.qty, 0);
+        const activeEmps = Object.keys(this.data.activeTimers).length;
+        const ordersNew = this.data.orders.filter(o => o.status === 'new').length;
+
+        sg.innerHTML = `
+            <div class="stat-box"><div class="num">${totalProducts}</div><div class="label">Товаров</div></div>
+            <div class="stat-box"><div class="num">${totalQty.toLocaleString()}</div><div class="label">Единиц на складе</div></div>
+            <div class="stat-box"><div class="num">${uniqueUsedCells}/${totalCells}</div><div class="label">Занято ячеек</div></div>
+            <div class="stat-box"><div class="num">${activeEmps}</div><div class="label">На смене</div></div>
+            <div class="stat-box"><div class="num">${ordersNew}</div><div class="label">Заказов в работе</div></div>
+            <div class="stat-box"><div class="num">${this.data.logs.length}</div><div class="label">Операций</div></div>`;
+
+        const zs = document.getElementById('zoneStats');
+        if (zs) {
+            zs.innerHTML = this.data.zones.map(z => {
+                const cells = this.data.cells.filter(c => c.zoneId === z.id).map(c => c.id);
+                const used = cells.filter(c => this.data.inventory.some(i => i.cellId === c && i.qty > 0)).length;
+                const pct = cells.length ? Math.round(used / cells.length * 100) : 0;
+                return `<div style="margin-bottom:0.5rem;"><div style="display:flex; justify-content:space-between; font-size:0.8rem;"><span>${z.name}</span><span>${pct}% (${used}/${cells.length})</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%; background:var(--zone-${z.type})"></div></div></div>`;
+            }).join('');
+        }
+
+        const lt = document.getElementById('logTable');
+        if (lt) {
+            lt.innerHTML = this.data.logs.slice(0, 15).map(l => `<tr><td>${l.time}</td><td>${l.actor}</td><td>${l.msg}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-sec); padding:1rem;">Нет операций</td></tr>';
+        }
+    },
+
+    // === УТИЛИТЫ ===
+    getZoneName(zoneId) { 
+        return this.data.zones.find(z => z.id === zoneId)?.name || zoneId; 
+    },
+    closeModal() { 
+        document.getElementById('modal').style.display = 'none'; 
+    },
+    toast(msg, type = 'success') {
+        const t = document.createElement('div'); 
+        t.className = 'toast ' + type; 
+        t.textContent = msg;
+        document.getElementById('toasts').appendChild(t);
+        setTimeout(() => t.remove(), 2500);
+    },
+    nav(id) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('#mainNav button').forEach(b => b.classList.remove('active'));
+        const target = document.getElementById(id);
+        if (target) target.classList.add('active');
+        
+        // Подсветка активной кнопки
+        const navBtns = document.querySelectorAll('#mainNav button');
+        navBtns.forEach(b => {
+            if (b.getAttribute('onclick')?.includes(`'${id}'`)) {
+                b.classList.add('active');
+            }
+        });
+        
+        setTimeout(() => {
+            if (id === 'receiving') document.getElementById('recvScan')?.focus();
+            if (id === 'movement') document.getElementById('moveScan')?.focus();
+            this.renderAll();
+        }, 100);
+    },
+    renderAll() { 
+        this.renderDash(); 
+        this.renderZones(); 
+        this.renderCells(); 
+        this.renderInventory(); 
+        this.renderOrders(); 
+        this.renderProducts(); 
+        this.renderEmployees(); 
+        this.fillSelects(); 
+    },
+    fillSelects() {
+        ['recvCell', 'moveTo'].forEach(selId => {
+            const sel = document.getElementById(selId);
+            if (sel) {
+                sel.innerHTML = '<option value="">Выберите ячейку...</option>';
+                this.data.zones.forEach(z => {
+                    const group = document.createElement('optgroup');
+                    group.label = z.name;
+                    this.data.cells.filter(c => c.zoneId === z.id).forEach(c => {
+                        const opt = document.createElement('option');
+                        opt.value = c.id;
+                        opt.textContent = `${c.location} (до ${c.capacity} шт)`;
+                        group.appendChild(opt);
+                    });
+                    sel.appendChild(group);
+                });
+            }
+        });
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => W.init());
+</script>
+</body>
+</html>
