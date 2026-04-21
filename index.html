@@ -1,1143 +1,2083 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WMS Fulfillment Pro — Склад</title>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    <style>
-        :root {
-            --primary: #3b82f6; --primary-dark: #2563eb;
-            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
-            --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --text-sec: #64748b;
-            --border: #e2e8f0; --hover: #f1f5f9; --input-bg: #f8fafc;
-            --radius: 10px; --shadow: 0 2px 8px rgba(0,0,0,0.08);
-            --zone-receiving: #dbeafe; --zone-storage: #dcfce7;
-            --zone-shipping: #fef3c7; --zone-brak: #fee2e2;
-        }
-        [data-theme="dark"] {
-            --primary: #60a5fa; --primary-dark: #3b82f6;
-            --success: #34d399; --warning: #fbbf24; --danger: #f87171;
-            --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --text-sec: #94a3b8;
-            --border: #334155; --hover: #334155; --input-bg: #334155;
-            --shadow: 0 2px 8px rgba(0,0,0,0.3);
-            --zone-receiving: #1e3a8a; --zone-storage: #14532d;
-            --zone-shipping: #713f12; --zone-brak: #7f1d1d;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.3s, color 0.3s; }
-        
-        header { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 1rem; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); flex-wrap: wrap; gap: 0.5rem; }
-        .brand { font-size: 1.2rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 0.4rem; }
-        .controls { display: flex; gap: 0.5rem; align-items: center; }
-        
-        button, .btn { padding: 0.4rem 0.8rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem; background: var(--primary); color: white; transition: all 0.15s; white-space: nowrap; }
-        button:hover, .btn:hover { filter: brightness(0.9); transform: translateY(-1px); }
-        .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
-        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
-        .btn-outline:hover { background: var(--primary); color: white; }
-        .btn-danger { background: var(--danger); } .btn-success { background: var(--success); }
-        .btn-warning { background: var(--warning); color: #000; } .btn-secondary { background: var(--text-sec); }
-        .btn-theme { background: var(--input-bg); border: 1px solid var(--border); color: var(--text); }
-        
-        .user-panel { display: none; align-items: center; gap: 0.4rem; background: var(--input-bg); padding: 0.3rem 0.6rem; border-radius: 16px; border: 1px solid var(--border); font-size: 0.8rem; }
-        .role-badge { font-size: 0.65rem; padding: 1px 6px; border-radius: 8px; background: var(--primary); color: white; text-transform: uppercase; }
-        .role-badge.admin { background: var(--danger); } .role-badge.manager { background: var(--warning); color: #000; } .role-badge.worker { background: var(--success); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Фулфилмент Про — Система управления складом</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --primary: #2b6cb0;
+  --primary-dark: #1a4971;
+  --primary-light: #ebf4ff;
+  --success: #38a169;
+  --warning: #d69e2e;
+  --danger: #e53e3e;
+  --gray-50: #f7fafc;
+  --gray-100: #edf2f7;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e0;
+  --gray-400: #a0aec0;
+  --gray-500: #718096;
+  --gray-600: #4a5568;
+  --gray-700: #2d3748;
+  --gray-800: #1a202c;
+  --sidebar-w: 260px;
+  --header-h: 56px;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: var(--gray-100); color: var(--gray-700); font-size: 14px; line-height: 1.5; }
+a { color: var(--primary); text-decoration: none; }
+button { cursor: pointer; font-family: inherit; }
+input, select, textarea { font-family: inherit; font-size: 14px; }
 
-        nav { display: flex; gap: 0.3rem; padding: 0.4rem 1rem; background: var(--card); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; flex-wrap: wrap; }
-        nav::-webkit-scrollbar { display: none; }
-        nav button { background: transparent; color: var(--text-sec); font-weight: 500; white-space: nowrap; font-size: 0.8rem; padding: 0.4rem 0.7rem; border: none; cursor: pointer; border-radius: 6px; }
-        nav button:hover { background: var(--hover); color: var(--primary); }
-        nav button.active { background: var(--primary); color: white; }
+/* SIDEBAR */
+.sidebar {
+  position: fixed; top:0; left:0; bottom:0; width: var(--sidebar-w);
+  background: var(--gray-800); color: #fff; z-index: 100;
+  display: flex; flex-direction: column; transition: transform .3s;
+}
+.sidebar .logo { padding: 16px 20px; font-size: 18px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,.1); display:flex; align-items:center; gap:10px; }
+.sidebar .logo span { color: #63b3ed; }
+.sidebar nav { flex:1; overflow-y:auto; padding: 8px 0; }
+.sidebar nav a {
+  display:flex; align-items:center; gap:12px; padding: 10px 20px; color: var(--gray-300);
+  font-size:14px; transition: all .15s; border-left: 3px solid transparent;
+}
+.sidebar nav a:hover { background: rgba(255,255,255,.05); color: #fff; }
+.sidebar nav a.active { background: rgba(99,179,237,.15); color: #63b3ed; border-left-color: #63b3ed; }
+.sidebar nav a .icon { font-size: 18px; width: 24px; text-align: center; }
+.sidebar nav .section-title { padding: 16px 20px 4px; font-size: 11px; text-transform: uppercase; color: var(--gray-500); letter-spacing: 1px; }
+.sidebar .sidebar-footer { padding: 12px 20px; border-top: 1px solid rgba(255,255,255,.1); font-size: 12px; color: var(--gray-500); }
 
-        main { padding: 1rem; max-width: 1400px; margin: 0 auto; }
-        .section { display: none; animation: fadeIn 0.2s; } .section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+/* HEADER */
+.header {
+  position: fixed; top:0; left: var(--sidebar-w); right:0; height: var(--header-h);
+  background: #fff; border-bottom: 1px solid var(--gray-200); z-index: 90;
+  display: flex; align-items: center; padding: 0 24px; gap: 16px;
+}
+.header .page-title { font-size: 18px; font-weight: 600; color: var(--gray-800); }
+.header .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.header .header-actions .avatar { width:32px; height:32px; border-radius:50%; background: var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; }
 
-        .card { background: var(--card); padding: 1rem; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 1rem; border: 1px solid var(--border); transition: background 0.3s, border-color 0.3s; }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; flex-wrap: wrap; gap: 0.5rem; }
-        .card h3 { font-size: 1.1rem; font-weight: 700; }
+/* MAIN */
+.main { margin-left: var(--sidebar-w); margin-top: var(--header-h); padding: 24px; min-height: calc(100vh - var(--header-h)); }
 
-        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
-        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem; }
+/* CARDS */
+.card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; }
+.card-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-200); display:flex; align-items:center; justify-content:space-between; }
+.card-header h3 { font-size: 16px; font-weight: 600; color: var(--gray-800); }
+.card-body { padding: 20px; }
+.card-footer { padding: 12px 20px; border-top: 1px solid var(--gray-200); background: var(--gray-50); border-radius: 0 0 var(--radius) var(--radius); }
 
-        .stat-box { background: var(--hover); padding: 0.8rem; border-radius: 8px; text-align: center; border: 1px solid var(--border); }
-        .stat-box .num { font-size: 1.4rem; font-weight: 800; color: var(--primary); }
-        .stat-box .label { font-size: 0.75rem; color: var(--text-sec); margin-top: 0.2rem; }
+/* STATS */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: #fff; border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); display:flex; align-items:center; gap:16px; }
+.stat-card .stat-icon { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; }
+.stat-card .stat-icon.blue { background: var(--primary-light); color: var(--primary); }
+.stat-card .stat-icon.green { background: #f0fff4; color: var(--success); }
+.stat-card .stat-icon.orange { background: #fffaf0; color: var(--warning); }
+.stat-card .stat-icon.red { background: #fff5f5; color: var(--danger); }
+.stat-card .stat-info h4 { font-size: 24px; font-weight: 700; color: var(--gray-800); }
+.stat-card .stat-info p { font-size: 13px; color: var(--gray-500); }
 
-        .table-wrap { overflow-x: auto; border-radius: 6px; border: 1px solid var(--border); }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th { padding: 0.6rem; text-align: left; background: var(--hover); color: var(--text-sec); font-size: 0.7rem; text-transform: uppercase; border-bottom: 2px solid var(--border); white-space: nowrap; }
-        td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        tr:hover td { background: var(--hover); }
-        tr:last-child td { border-bottom: none; }
+/* TABLE */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { background: var(--gray-50); padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; border-bottom: 2px solid var(--gray-200); white-space: nowrap; }
+td { padding: 10px 14px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+tr:hover td { background: var(--primary-light); }
+.table-img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: var(--gray-200); }
 
-        .status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 500; }
-        .status.on { background: rgba(16,185,129,0.15); color: var(--success); }
-        .status.off { background: rgba(100,116,139,0.1); color: var(--text-sec); }
-        .status.busy { background: rgba(245,158,11,0.15); color: var(--warning); }
-        .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-sec); }
-        .dot.active { background: var(--success); box-shadow: 0 0 0 2px rgba(16,185,129,0.2); }
-        
-        .timer { font-family: monospace; font-weight: 700; color: var(--primary); font-size: 0.85rem; }
-        
-        input, select, textarea { padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg); color: var(--text); width: 100%; font-size: 0.85rem; transition: border-color 0.2s; }
-        input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
-        
-        .scan-box { text-align: center; padding: 1.2rem; background: var(--hover); border-radius: var(--radius); border: 2px dashed var(--border); margin-bottom: 1rem; }
-        .scan-box input { max-width: 300px; font-size: 1rem; text-align: center; font-family: monospace; }
-        .scan-box input.scanning { animation: pulse 1.5s infinite; border-color: var(--success) !important; }
-        @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 50% { box-shadow: 0 0 0 10px rgba(16,185,129,0); } }
+/* BUTTONS */
+.btn { display:inline-flex; align-items:center; gap:6px; padding: 8px 16px; border-radius: 6px; font-size:13px; font-weight:500; border:1px solid transparent; transition: all .15s; }
+.btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #2f855a; }
+.btn-warning { background: var(--warning); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #c53030; }
+.btn-outline { background: #fff; color: var(--gray-600); border-color: var(--gray-300); }
+.btn-outline:hover { background: var(--gray-50); border-color: var(--gray-400); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-lg { padding: 10px 24px; font-size: 15px; }
 
-        .cell-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.5rem; }
-        .cell-item { padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--card); text-align: center; cursor: pointer; transition: all 0.15s; }
-        .cell-item:hover { transform: scale(1.03); box-shadow: var(--shadow); }
-        .cell-item.zone-receiving { background: var(--zone-receiving); }
-        .cell-item.zone-storage { background: var(--zone-storage); }
-        .cell-item.zone-shipping { background: var(--zone-shipping); }
-        .cell-item.zone-brak { background: var(--zone-brak); }
-        .cell-item.empty { border-style: dashed; opacity: 0.7; }
-        .cell-item .loc { font-weight: 700; font-size: 0.85rem; }
-        .cell-item .info { font-size: 0.7rem; color: var(--text-sec); margin-top: 0.2rem; }
+/* BADGES */
+.badge { display:inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+.badge-success { background: #f0fff4; color: #276749; }
+.badge-warning { background: #fffaf0; color: #975a16; }
+.badge-danger { background: #fff5f5; color: #9b2c2c; }
+.badge-info { background: var(--primary-light); color: var(--primary); }
+.badge-gray { background: var(--gray-100); color: var(--gray-600); }
 
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
-        .modal { background: var(--card); padding: 1.2rem; border-radius: var(--radius); width: 95%; max-width: 550px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.2s; box-shadow: var(--shadow); }
-        @keyframes slideUp { from { transform: translateY(15px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .modal h2 { margin-bottom: 0.8rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; font-size: 1.1rem; }
-        .form-group { margin-bottom: 0.8rem; } .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.8rem; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 0.4rem; margin-top: 1rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+/* FORMS */
+.form-group { margin-bottom: 16px; }
+.form-group label { display:block; margin-bottom:4px; font-weight:500; color: var(--gray-600); font-size:13px; }
+.form-control { width:100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px; font-size:14px; transition: border-color .15s; }
+.form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(43,108,176,.15); }
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 16px; }
+.form-check { display:flex; align-items:center; gap:8px; }
 
-        .toast-container { position: fixed; bottom: 1.2rem; left: 50%; transform: translateX(-50%); z-index: 2000; display: flex; flex-direction: column; gap: 0.4rem; align-items: center; pointer-events: none; }
-        .toast { padding: 0.5rem 1rem; border-radius: 6px; color: white; font-weight: 500; font-size: 0.8rem; box-shadow: 0 2px 8px rgba(0,0,0,0.2); animation: slideUp 0.2s; pointer-events: auto; }
-        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.warning { background: var(--warning); color: #000; }
-        .toast.info { background: var(--primary); }
+/* MODAL */
+.modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.5); z-index:200; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition: opacity .2s; }
+.modal-overlay.active { opacity:1; pointer-events:all; }
+.modal { background:#fff; border-radius: var(--radius); box-shadow: var(--shadow-lg); width:90%; max-width:700px; max-height:90vh; overflow-y:auto; transform: translateY(-20px); transition: transform .2s; }
+.modal-overlay.active .modal { transform: translateY(0); }
+.modal-header { padding:16px 20px; border-bottom:1px solid var(--gray-200); display:flex; align-items:center; justify-content:space-between; }
+.modal-header h3 { font-size:16px; font-weight:600; }
+.modal-close { background:none; border:none; font-size:20px; color:var(--gray-400); cursor:pointer; padding:4px 8px; border-radius:4px; }
+.modal-close:hover { background:var(--gray-100); color:var(--gray-600); }
+.modal-body { padding:20px; }
+.modal-footer { padding:12px 20px; border-top:1px solid var(--gray-200); display:flex; gap:8px; justify-content:flex-end; }
 
-        [data-role="worker"] .admin-only, [data-role="worker"] .manager-only, [data-role="manager"] .admin-only { display: none !important; }
-        
-        .badge-loc { display: inline-block; padding: 2px 6px; background: var(--hover); border-radius: 4px; font-family: monospace; font-size: 0.75rem; border: 1px solid var(--border); }
-        .qty-input { width: 60px !important; text-align: center; display: inline-block; }
-        
-        .zone-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
-        .zone-tag.receiving { background: var(--zone-receiving); color: #1d4ed8; }
-        .zone-tag.storage { background: var(--zone-storage); color: #15803d; }
-        .zone-tag.shipping { background: var(--zone-shipping); color: #92400e; }
-        .zone-tag.brak { background: var(--zone-brak); color: #b91c1c; }
+/* TABS */
+.tabs { display:flex; border-bottom: 2px solid var(--gray-200); margin-bottom:20px; }
+.tab-btn { padding: 10px 20px; border:none; background:none; font-size:14px; font-weight:500; color:var(--gray-500); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; transition: all .15s; }
+.tab-btn.active { color:var(--primary); border-bottom-color:var(--primary); }
+.tab-btn:hover { color:var(--gray-700); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
 
-        .progress-bar { height: 6px; background: var(--hover); border-radius: 3px; overflow: hidden; margin-top: 0.3rem; }
-        .progress-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
+/* SEARCH */
+.search-box { position:relative; }
+.search-box input { padding-left:36px; }
+.search-box::before { content:"🔍"; position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:14px; }
 
-        @media (max-width: 700px) {
-            header { flex-direction: column; padding: 0.5rem; }
-            .controls { justify-content: center; }
-            nav { padding: 0.3rem; }
-            main { padding: 0.5rem; }
-            table { display: block; overflow-x: auto; }
-            th, td { padding: 0.4rem; font-size: 0.75rem; }
-            .cell-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
-        }
-    </style>
+/* BOT */
+.bot-panel { position:fixed; bottom:20px; right:20px; z-index:300; }
+.bot-toggle { width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg, #667eea, #764ba2); color:#fff; border:none; font-size:28px; box-shadow: var(--shadow-lg); cursor:pointer; transition:transform .2s; }
+.bot-toggle:hover { transform:scale(1.1); }
+.bot-window { position:absolute; bottom:70px; right:0; width:360px; height:480px; background:#fff; border-radius:16px; box-shadow: var(--shadow-lg); display:none; flex-direction:column; overflow:hidden; }
+.bot-window.active { display:flex; }
+.bot-header { background:linear-gradient(135deg, #667eea, #764ba2); color:#fff; padding:14px 16px; display:flex; align-items:center; gap:10px; }
+.bot-header .bot-avatar { width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; font-size:20px; }
+.bot-messages { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.bot-msg { max-width:85%; padding:8px 12px; border-radius:12px; font-size:13px; line-height:1.4; }
+.bot-msg.bot { background:var(--gray-100); color:var(--gray-700); align-self:flex-start; border-bottom-left-radius:4px; }
+.bot-msg.user { background:var(--primary); color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+.bot-input { display:flex; border-top:1px solid var(--gray-200); }
+.bot-input input { flex:1; border:none; padding:12px; font-size:14px; outline:none; }
+.bot-input button { background:linear-gradient(135deg, #667eea, #764ba2); color:#fff; border:none; padding:0 16px; font-size:18px; cursor:pointer; }
+
+/* PRINT LABEL */
+.label-preview { border: 2px dashed var(--gray-300); padding: 20px; text-align: center; background: #fff; margin: 16px 0; }
+.label-preview .label-content { display: inline-block; border: 1px solid #000; padding: 10px 20px; min-width: 200px; }
+
+/* PHOTO UPLOAD */
+.photo-upload { width: 100px; height: 100px; border: 2px dashed var(--gray-300); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; background: var(--gray-50); position: relative; }
+.photo-upload img { width: 100%; height: 100%; object-fit: cover; }
+.photo-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* ONLINE INDICATOR */
+.online-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.online-dot.online { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.online-dot.offline { background: var(--gray-400); }
+
+/* INVENTORY */
+.inventory-item { display: flex; align-items: center; gap: 12px; padding: 10px; border-bottom: 1px solid var(--gray-100); }
+.inventory-item .qty-input { width: 80px; text-align: center; }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .header { left: 0; }
+  .main { margin-left: 0; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .modal { width: 95%; }
+  .bot-window { width: 300px; right: -10px; }
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--gray-100); }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+/* PAGE */
+.page { display: none; }
+.page.active { display: block; }
+
+/* MISC */
+.text-muted { color: var(--gray-500); }
+.text-sm { font-size: 12px; }
+.fw-600 { font-weight: 600; }
+.mt-2 { margin-top: 8px; }
+.mt-4 { margin-top: 16px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-4 { margin-bottom: 16px; }
+.gap-2 { gap: 8px; }
+.flex { display: flex; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.w-full { width: 100%; }
+
+/* TOAST */
+.toast-container { position: fixed; top: 70px; right: 24px; z-index: 500; display: flex; flex-direction: column; gap: 8px; }
+.toast { padding: 12px 20px; border-radius: 8px; color: #fff; font-size: 14px; box-shadow: var(--shadow-lg); animation: slideIn .3s ease; }
+.toast.success { background: var(--success); }
+.toast.error { background: var(--danger); }
+.toast.info { background: var(--primary); }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* PRINT STYLES */
+@media print {
+  .sidebar, .header, .bot-panel, .toast-container { display: none !important; }
+  .main { margin: 0 !important; padding: 0 !important; }
+  .card { box-shadow: none !important; border: 1px solid #ddd; }
+}
+
+/* Document preview */
+.doc-preview { background: #fff; border: 1px solid var(--gray-200); padding: 24px; border-radius: var(--radius); max-width: 800px; margin: 0 auto; }
+.doc-preview h2 { text-align: center; margin-bottom: 16px; font-size: 20px; }
+.doc-preview table { margin-bottom: 16px; }
+.doc-signature { display: flex; justify-content: space-between; margin-top: 40px; }
+.doc-signature div { text-align: center; width: 200px; border-top: 1px solid #000; padding-top: 8px; }
+
+/* Employee card */
+.emp-card { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--gray-200); border-radius: 8px; margin-bottom: 8px; background: #fff; }
+.emp-card .emp-photo { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background: var(--gray-200); }
+.emp-card .emp-info { flex: 1; }
+.emp-card .emp-info h4 { font-size: 14px; font-weight: 600; }
+.emp-card .emp-info p { font-size: 12px; color: var(--gray-500); }
+
+/* Task card */
+.task-card { padding: 14px; border-left: 4px solid var(--primary); background: #fff; border-radius: 0 8px 8px 0; margin-bottom: 8px; box-shadow: var(--shadow); }
+.task-card.urgent { border-left-color: var(--danger); }
+.task-card.done { border-left-color: var(--success); opacity: .7; }
+.task-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.task-card p { font-size: 13px; color: var(--gray-500); }
+.task-card .task-meta { display: flex; gap: 12px; margin-top: 6px; font-size: 12px; color: var(--gray-400); }
+
+/* Scanner input */
+.scanner-input { border: 2px solid var(--success) !important; background: #f0fff4 !important; }
+</style>
 </head>
 <body>
-    <header>
-        <div class="brand">🏭 WMS Склад</div>
-        <div class="controls">
-            <button class="btn-theme" onclick="W.toggleTheme()" id="themeBtn">🌙 Тёмная</button>
-            <button id="loginBtn" onclick="W.showLogin()">🔐 Вход</button>
-            <div class="user-panel" id="userPanel">
-                <span id="userName">User</span>
-                <span class="role-badge" id="userRole">admin</span>
-                <button class="btn btn-sm btn-danger" onclick="W.logout()">🚪</button>
-            </div>
-            <span id="clock" style="font-size:0.8rem; color:var(--text-sec);"></span>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="logo">📦 <span>Фулфилмент</span> Про</div>
+  <nav>
+    <div class="section-title">Основное</div>
+    <a href="#" class="active" data-page="dashboard"><span class="icon">📊</span> Дашборд</a>
+    <a href="#" data-page="warehouse"><span class="icon">🏭</span> Склад</a>
+    <a href="#" data-page="receiving"><span class="icon">📥</span> Приёмка</a>
+    <a href="#" data-page="shipping"><span class="icon">📤</span> Отгрузка</a>
+    <div class="section-title">Управление</div>
+    <a href="#" data-page="tasks"><span class="icon">✅</span> Задачи</a>
+    <a href="#" data-page="employees"><span class="icon">👥</span> Сотрудники</a>
+    <a href="#" data-page="inventory"><span class="icon">📋</span> Инвентаризация</a>
+    <a href="#" data-page="labels"><span class="icon">🏷️</span> Печать этикеток</a>
+    <div class="section-title">Документы</div>
+    <a href="#" data-page="documents"><span class="icon">📄</span> Все документы</a>
+  </nav>
+  <div class="sidebar-footer">
+    v2.0 • Данные в localStorage<br>
+    <span id="currentDateTime"></span>
+  </div>
+</aside>
+
+<!-- HEADER -->
+<header class="header">
+  <button class="btn btn-outline btn-sm" onclick="document.getElementById('sidebar').classList.toggle('open')" style="display:none" id="menuBtn">☰</button>
+  <span class="page-title" id="pageTitle">Дашборд</span>
+  <div class="header-actions">
+    <button class="btn btn-outline btn-sm" onclick="exportAllData()">💾 Экспорт всех данных</button>
+    <label class="btn btn-outline btn-sm" style="cursor:pointer">📂 Импорт<input type="file" accept=".json" onchange="importAllData(event)" style="display:none"></label>
+    <div class="avatar" title="Администратор">А</div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+  <!-- TOAST -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="stats-grid" id="statsGrid"></div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+      <div class="card">
+        <div class="card-header"><h3>📋 Последние задачи</h3></div>
+        <div class="card-body" id="dashTasks"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>📥 Последние приёмки</h3></div>
+        <div class="card-body" id="dashReceiving"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WAREHOUSE -->
+  <div class="page" id="page-warehouse">
+    <div class="card">
+      <div class="card-header">
+        <h3>🏭 Склад — Товары и места хранения</h3>
+        <div class="flex gap-2">
+          <label class="btn btn-outline btn-sm" style="cursor:pointer">📥 Импорт Excel<input type="file" accept=".xlsx,.xls" onchange="importExcel(event)" style="display:none"></label>
+          <button class="btn btn-outline btn-sm" onclick="exportWarehouseExcel()">📤 Экспорт Excel</button>
+          <button class="btn btn-primary btn-sm" onclick="openProductModal()">➕ Добавить товар</button>
         </div>
-    </header>
+      </div>
+      <div class="card-body">
+        <div class="flex gap-2 mb-4" style="flex-wrap:wrap">
+          <div class="search-box" style="flex:1; min-width:200px">
+            <input type="text" class="form-control" placeholder="Поиск по названию, артикулу..." id="warehouseSearch" oninput="renderWarehouse()">
+          </div>
+          <select class="form-control" style="width:auto" id="warehouseFilterLocation" onchange="renderWarehouse()">
+            <option value="">Все места</option>
+          </select>
+          <select class="form-control" style="width:auto" id="warehouseFilterCategory" onchange="renderWarehouse()">
+            <option value="">Все категории</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Фото</th><th>Артикул</th><th>Название</th><th>Категория</th><th>Место хранения</th>
+                <th>Кол-во</th><th>Цена</th><th>Документы</th><th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="warehouseTable"></tbody>
+          </table>
+        </div>
+        <div class="card-footer flex justify-between items-center">
+          <span class="text-muted text-sm" id="warehouseCount">0 товаров</span>
+          <span class="text-muted text-sm" id="warehouseTotalValue">Общая стоимость: 0 ₽</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <nav id="mainNav">
-        <button class="active" onclick="W.nav('dashboard')">📊 Главная</button>
-        <button onclick="W.nav('zones')">🗺️ Зоны</button>
-        <button onclick="W.nav('cells')">📦 Ячейки</button>
-        <button onclick="W.nav('receiving')">📥 Приемка</button>
-        <button onclick="W.nav('inventory')">📋 Остатки</button>
-        <button onclick="W.nav('movement')">🔄 Перемещения</button>
-        <button onclick="W.nav('picking')">🛒 Отбор</button>
-        <button onclick="W.nav('products')">📋 Товары</button>
-        <button onclick="W.nav('employees')">👥 Сотрудники</button>
-    </nav>
-
-    <main>
-        <section id="dashboard" class="section active">
-            <div class="grid-4" id="statsGrid"></div>
-            <div class="grid-2" style="margin-top:1rem;">
-                <div class="card"><h3>📊 Заполненность зон</h3><div id="zoneStats"></div></div>
-                <div class="card"><h3>🕒 Последние операции</h3><div class="table-wrap"><table><thead><tr><th>Время</th><th>Операция</th><th>Детали</th></tr></thead><tbody id="logTable"></tbody></table></div></div>
+  <!-- RECEIVING -->
+  <div class="page" id="page-receiving">
+    <div class="card">
+      <div class="card-header">
+        <h3>📥 Приёмка товара</h3>
+        <button class="btn btn-primary btn-sm" onclick="openReceivingModal()">➕ Новая приёмка</button>
+      </div>
+      <div class="card-body">
+        <div class="tabs" id="receivingTabs">
+          <button class="tab-btn active" data-tab="rec-list">Список приёмки</button>
+          <button class="tab-btn" data-tab="rec-scanner">📱 Сканер / Ввод</button>
+        </div>
+        <div class="tab-content active" id="tab-rec-list">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>№</th><th>Дата</th><th>Поставщик</th><th>Товаров</th><th>Статус</th><th>Документы</th><th>Действия</th></tr></thead>
+              <tbody id="receivingTable"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="tab-content" id="tab-rec-scanner">
+          <div class="form-group">
+            <label>Режим ввода:</label>
+            <div class="flex gap-2" style="flex-wrap:wrap">
+              <button class="btn btn-outline btn-sm" onclick="setScanMode('manual')">✋ Ручной ввод</button>
+              <button class="btn btn-outline btn-sm" onclick="setScanMode('scanner')">📷 Сканер (ТЦД)</button>
             </div>
-        </section>
+          </div>
+          <div class="form-group">
+            <label>Штрихкод / Артикул:</label>
+            <input type="text" class="form-control scanner-input" id="scanInput" placeholder="Отсканируйте или введите..." onkeypress="handleScanKey(event)">
+          </div>
+          <div class="form-group">
+            <label>Количество:</label>
+            <input type="number" class="form-control" id="scanQty" value="1" min="1" style="width:120px">
+          </div>
+          <button class="btn btn-success" onclick="addScannedItem()">✅ Принять товар</button>
+          <div class="mt-4">
+            <h4 class="mb-2">Отсканированные товары:</h4>
+            <div id="scannedItems"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        <section id="zones" class="section">
-            <div class="card">
-                <div class="card-header"><h3>🗺️ Зоны склада</h3><button class="btn btn-sm admin-only" onclick="W.modalZone()">➕ Добавить зону</button></div>
-                <div class="grid-2" id="zonesList"></div>
-            </div>
-        </section>
+  <!-- SHIPPING -->
+  <div class="page" id="page-shipping">
+    <div class="card">
+      <div class="card-header">
+        <h3>📤 Отгрузка товара</h3>
+        <button class="btn btn-primary btn-sm" onclick="openShippingModal()">➕ Новая отгрузка</button>
+      </div>
+      <div class="card-body">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>№</th><th>Дата</th><th>Клиент</th><th>Товаров</th><th>Статус</th><th>Документы</th><th>Действия</th></tr></thead>
+            <tbody id="shippingTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        <section id="cells" class="section">
-            <div class="card">
-                <div class="card-header">
-                    <h3>📦 Ячейки склада</h3>
-                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                        <select id="cellZoneFilter" style="width:auto; font-size:0.8rem; padding:0.3rem;" onchange="W.renderCells()"><option value="all">Все зоны</option></select>
-                        <button class="btn btn-sm admin-only" onclick="W.modalCell()">➕ Добавить ячейку</button>
-                        <button class="btn btn-sm admin-only" onclick="W.generateCells()">🏗️ Автогенерация</button>
-                    </div>
-                </div>
-                <div class="cell-grid" id="cellsGrid"></div>
-            </div>
-        </section>
+  <!-- TASKS -->
+  <div class="page" id="page-tasks">
+    <div class="card">
+      <div class="card-header">
+        <h3>✅ Задачи на сегодня</h3>
+        <button class="btn btn-primary btn-sm" onclick="openTaskModal()">➕ Добавить задачу</button>
+      </div>
+      <div class="card-body">
+        <div class="flex gap-2 mb-4" style="flex-wrap:wrap">
+          <select class="form-control" style="width:auto" id="taskFilterEmployee" onchange="renderTasks()">
+            <option value="">Все сотрудники</option>
+          </select>
+          <select class="form-control" style="width:auto" id="taskFilterStatus" onchange="renderTasks()">
+            <option value="">Все статусы</option>
+            <option value="new">Новая</option>
+            <option value="in_progress">В работе</option>
+            <option value="done">Выполнена</option>
+          </select>
+        </div>
+        <div id="taskList"></div>
+      </div>
+    </div>
+  </div>
 
-        <section id="receiving" class="section">
-            <div class="card">
-                <div class="card-header"><h3>📥 Приемка товара</h3></div>
-                <div class="scan-box">
-                    <input type="text" id="recvScan" placeholder="Сканируйте штрихкод/SKU" autofocus onfocus="this.classList.add('scanning')" onblur="this.classList.remove('scanning')">
-                    <p style="margin-top:0.4rem; font-size:0.8rem; color:var(--text-sec);">1. Сканируйте товар → 2. Выберите ячейку → 3. Разместить</p>
-                </div>
-                <div id="recvInfo" style="display:none; padding:0.8rem; background:var(--hover); border-radius:6px; margin-bottom:0.8rem;"></div>
-                <div style="display:flex; gap:0.5rem; margin-bottom:0.8rem; flex-wrap:wrap; align-items:end;">
-                    <div style="flex:1; min-width:200px;">
-                        <label style="font-size:0.8rem; font-weight:600;">Целевая ячейка</label>
-                        <select id="recvCell"></select>
-                    </div>
-                    <div style="width:80px;">
-                        <label style="font-size:0.8rem; font-weight:600;">Кол-во</label>
-                        <input type="number" id="recvQty" value="1" min="1" class="qty-input">
-                    </div>
-                    <button class="btn btn-success" onclick="W.placeItem()">✅ Разместить</button>
-                </div>
-                <div class="table-wrap"><table><thead><tr><th>Время</th><th>Товар</th><th>SKU</th><th>Ячейка</th><th>Кол-во</th></tr></thead><tbody id="recvLog"></tbody></table></div>
-            </div>
-        </section>
+  <!-- EMPLOYEES -->
+  <div class="page" id="page-employees">
+    <div class="card">
+      <div class="card-header">
+        <h3>👥 Сотрудники</h3>
+        <button class="btn btn-primary btn-sm" onclick="openEmployeeModal()">➕ Добавить сотрудника</button>
+      </div>
+      <div class="card-body">
+        <div class="stats-grid" id="empStats"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Фото</th><th>Имя</th><th>Должность</th><th>Ставка/час</th><th>Онлайн</th><th>Часы сегодня</th><th>Документы</th><th>Действия</th></tr></thead>
+            <tbody id="employeesTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        <section id="inventory" class="section">
-            <div class="card">
-                <div class="card-header">
-                    <h3>📋 Остатки по складу</h3>
-                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                        <select id="invZoneFilter" style="width:auto; font-size:0.8rem; padding:0.3rem;" onchange="W.renderInventory()"><option value="all">Все зоны</option></select>
-                        <input type="text" id="invSearch" placeholder="🔍 Поиск SKU/название" style="width:200px; font-size:0.8rem; padding:0.3rem;" oninput="W.renderInventory()">
-                        <button class="btn btn-sm" onclick="W.exportInventory()">📥 Excel</button>
-                    </div>
-                </div>
-                <div class="table-wrap"><table><thead><tr><th>SKU</th><th>Товар</th><th>Ячейка</th><th>Зона</th><th>Остаток</th><th class="admin-only">Действия</th></tr></thead><tbody id="invTable"></tbody></table></div>
-            </div>
-        </section>
+  <!-- INVENTORY -->
+  <div class="page" id="page-inventory">
+    <div class="card">
+      <div class="card-header">
+        <h3>📋 Инвентаризация</h3>
+        <div class="flex gap-2">
+          <button class="btn btn-primary btn-sm" onclick="startInventory()">🔄 Начать инвентаризацию</button>
+          <button class="btn btn-outline btn-sm" onclick="printInventoryReport()">🖨️ Печать отчёта</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-row mb-4">
+          <div class="form-group">
+            <label>Сотрудник:</label>
+            <select class="form-control" id="invEmployee"></select>
+          </div>
+          <div class="form-group">
+            <label>Режим:</label>
+            <select class="form-control" id="invMode">
+              <option value="manual">Ручной ввод</option>
+              <option value="tsd">ТСД (сканер)</option>
+            </select>
+          </div>
+        </div>
+        <div id="inventoryArea" style="display:none">
+          <div class="form-group">
+            <label>Штрихкод / Артикул:</label>
+            <input type="text" class="form-control scanner-input" id="invScanInput" placeholder="Сканируйте..." onkeypress="handleInvScan(event)">
+          </div>
+          <div class="form-group">
+            <label>Фактическое количество:</label>
+            <input type="number" class="form-control" id="invActualQty" value="0" min="0" style="width:120px">
+          </div>
+          <button class="btn btn-success btn-sm mb-4" onclick="addInventoryItem()">✅ Записать</button>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Артикул</th><th>Название</th><th>Система</th><th>Факт</th><th>Расхождение</th></tr></thead>
+              <tbody id="inventoryTable"></tbody>
+            </table>
+          </div>
+          <div class="mt-4 flex gap-2">
+            <button class="btn btn-primary" onclick="finishInventory()">🏁 Завершить инвентаризацию</button>
+            <button class="btn btn-outline" onclick="printInventoryReport()">🖨️ Печать отчёта</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        <section id="movement" class="section">
-            <div class="card">
-                <div class="card-header"><h3>🔄 Перемещение товаров</h3></div>
-                <div class="scan-box">
-                    <input type="text" id="moveScan" placeholder="Сканируйте товар или ячейку" autofocus onfocus="this.classList.add('scanning')" onblur="this.classList.remove('scanning')">
-                    <p style="margin-top:0.4rem; font-size:0.8rem; color:var(--text-sec);">Сканируйте товар для выбора → Укажите целевую ячейку</p>
-                </div>
-                <div style="display:flex; gap:0.5rem; margin-bottom:0.8rem; flex-wrap:wrap; align-items:end;">
-                    <div style="flex:1; min-width:150px;"><label style="font-size:0.8rem; font-weight:600;">Товар</label><input id="moveProd" readonly style="background:var(--hover)"></div>
-                    <div style="width:80px;"><label style="font-size:0.8rem; font-weight:600;">Кол-во</label><input type="number" id="moveQty" value="1" min="1" class="qty-input"></div>
-                    <div style="flex:1; min-width:150px;"><label style="font-size:0.8rem; font-weight:600;">Откуда</label><input id="moveFrom" readonly style="background:var(--hover)"></div>
-                    <div style="flex:1; min-width:150px;"><label style="font-size:0.8rem; font-weight:600;">Куда</label><select id="moveTo"></select></div>
-                    <button class="btn btn-warning" onclick="W.moveItem()">🔄 Переместить</button>
-                </div>
-                <div class="table-wrap"><table><thead><tr><th>Время</th><th>Товар</th><th>Откуда</th><th>Куда</th><th>Кол-во</th></tr></thead><tbody id="moveLog"></tbody></table></div>
-            </div>
-        </section>
+  <!-- LABELS -->
+  <div class="page" id="page-labels">
+    <div class="card">
+      <div class="card-header">
+        <h3>🏷️ Печать этикеток</h3>
+      </div>
+      <div class="card-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Выберите товар:</label>
+            <select class="form-control" id="labelProduct"></select>
+          </div>
+          <div class="form-group">
+            <label>Количество этикеток:</label>
+            <input type="number" class="form-control" id="labelQty" value="1" min="1" max="100">
+          </div>
+          <div class="form-group">
+            <label>Размер:</label>
+            <select class="form-control" id="labelSize">
+              <option value="58x40">58×40 мм</option>
+              <option value="58x30">58×30 мм</option>
+              <option value="100x80">100×80 мм</option>
+              <option value="custom">Произвольный</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Дополнительная информация:</label>
+          <div class="form-check"><input type="checkbox" id="labelBarcode" checked> <span>Штрихкод</span></div>
+          <div class="form-check"><input type="checkbox" id="labelPrice"> <span>Цена</span></div>
+          <div class="form-check"><input type="checkbox" id="labelLocation"> <span>Место хранения</span></div>
+        </div>
+        <button class="btn btn-primary" onclick="generateLabels()">🖨️ Создать и печатать</button>
+        <div id="labelPreviewArea" class="mt-4"></div>
+      </div>
+    </div>
+  </div>
 
-        <section id="picking" class="section">
-            <div class="card">
-                <div class="card-header">
-                    <h3>🛒 Отбор и отгрузка</h3>
-                    <button class="btn btn-sm" onclick="W.modalOrder()">➕ Новый заказ</button>
-                </div>
-                <div id="ordersList"></div>
-            </div>
-        </section>
+  <!-- DOCUMENTS -->
+  <div class="page" id="page-documents">
+    <div class="card">
+      <div class="card-header">
+        <h3>📄 Документы</h3>
+      </div>
+      <div class="card-body">
+        <div class="tabs" id="docTabs">
+          <button class="tab-btn active" data-tab="doc-receiving">Приёмки</button>
+          <button class="tab-btn" data-tab="doc-shipping">Отгрузки</button>
+          <button class="tab-btn" data-tab="doc-inventory">Инвентаризации</button>
+        </div>
+        <div class="tab-content active" id="tab-doc-receiving">
+          <div id="docReceivingList"></div>
+        </div>
+        <div class="tab-content" id="tab-doc-shipping">
+          <div id="docShippingList"></div>
+        </div>
+        <div class="tab-content" id="tab-doc-inventory">
+          <div id="docInventoryList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
 
-        <section id="products" class="section">
-            <div class="card">
-                <div class="card-header">
-                    <h3>📋 Справочник товаров</h3>
-                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                        <button class="btn btn-sm admin-only" onclick="W.modalProduct()">➕ Добавить</button>
-                        <button class="btn btn-sm btn-success" onclick="W.exportProducts()">📥 Excel</button>
-                        <label class="btn btn-sm btn-outline" style="cursor:pointer; margin:0;">📤 Импорт <input type="file" accept=".xlsx" style="display:none" onchange="W.importProducts(this)"></label>
-                    </div>
-                </div>
-                <input type="text" id="prodSearch" placeholder="🔍 Поиск..." style="margin-bottom:0.8rem" oninput="W.filterProducts()">
-                <div class="table-wrap"><table><thead><tr><th>SKU</th><th>Название</th><th>Категория</th><th>Цена</th><th>Общий остаток</th><th class="admin-only"></th></tr></thead><tbody id="prodTable"></tbody></table></div>
-            </div>
-        </section>
+<!-- BOT -->
+<div class="bot-panel">
+  <div class="bot-window" id="botWindow">
+    <div class="bot-header">
+      <div class="bot-avatar">🤖</div>
+      <div><strong>ФулфиБот</strong><br><span style="font-size:12px;opacity:.8">Весёлый помощник</span></div>
+      <button onclick="toggleBot()" style="margin-left:auto;background:none;border:none;color:#fff;font-size:20px;cursor:pointer">×</button>
+    </div>
+    <div class="bot-messages" id="botMessages"></div>
+    <div class="bot-input">
+      <input type="text" id="botInput" placeholder="Спросите что-нибудь..." onkeypress="if(event.key==='Enter')sendBotMsg()">
+      <button onclick="sendBotMsg()">➤</button>
+    </div>
+  </div>
+  <button class="bot-toggle" onclick="toggleBot()">🤖</button>
+</div>
 
-        <section id="employees" class="section">
-            <div class="card">
-                <div class="card-header"><h3>👥 Сотрудники</h3><button class="btn btn-sm admin-only" onclick="W.modalEmployee()">➕ Добавить</button></div>
-                <div class="table-wrap"><table><thead><tr><th>ID</th><th>ФИО</th><th>Должность</th><th>Ставка</th><th>⏱ Сегодня</th><th>ЗП</th><th class="admin-only">Действия</th></tr></thead><tbody id="empTable"></tbody></table></div>
-            </div>
-        </section>
-    </main>
+<!-- MODALS -->
+<!-- Product Modal -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="productModalTitle">Добавить товар</h3><button class="modal-close" onclick="closeModal('productModal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="prodId">
+      <div class="form-group">
+        <label>Фото товара:</label>
+        <div class="photo-upload" id="prodPhotoUpload">
+          <span>📷 Фото</span>
+          <input type="file" accept="image/*" onchange="handlePhotoUpload(event, 'prodPhoto')">
+        </div>
+        <input type="hidden" id="prodPhoto">
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Артикул / Штрихкод *</label><input type="text" class="form-control" id="prodSku" required></div>
+        <div class="form-group"><label>Название *</label><input type="text" class="form-control" id="prodName" required></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Категория</label><input type="text" class="form-control" id="prodCategory" list="catList"><datalist id="catList"></datalist></div>
+        <div class="form-group"><label>Место хранения</label><input type="text" class="form-control" id="prodLocation" list="locList"><datalist id="locList"></datalist></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Количество</label><input type="number" class="form-control" id="prodQty" value="0" min="0"></div>
+        <div class="form-group"><label>Цена закупки (₽)</label><input type="number" class="form-control" id="prodCost" value="0" min="0" step="0.01"></div>
+        <div class="form-group"><label>Цена продажи (₽)</label><input type="number" class="form-control" id="prodPrice" value="0" min="0" step="0.01"></div>
+      </div>
+      <div class="form-group"><label>Описание</label><textarea class="form-control" id="prodDesc" rows="2"></textarea></div>
+      <div class="form-group">
+        <label>Документы (сертификаты, накладные):</label>
+        <div class="flex gap-2 flex-wrap">
+          <label class="btn btn-outline btn-sm" style="cursor:pointer">📎 Загрузить<input type="file" multiple onchange="handleDocUpload(event,'prodDocs')" style="display:none"></label>
+        </div>
+        <div id="prodDocsList" class="mt-2 text-sm text-muted"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('productModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveProduct()">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
 
-    <div class="toast-container" id="toasts"></div>
-    <div class="modal-overlay" id="modal" onclick="if(event.target===this)W.closeModal()"><div class="modal" id="modalContent"></div></div>
+<!-- Receiving Modal -->
+<div class="modal-overlay" id="receivingModal">
+  <div class="modal">
+    <div class="modal-header"><h3>Новая приёмка</h3><button class="modal-close" onclick="closeModal('receivingModal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Поставщик</label><input type="text" class="form-control" id="recSupplier"></div>
+        <div class="form-group"><label>Номер накладной</label><input type="text" class="form-control" id="recInvoice"></div>
+      </div>
+      <div class="form-group"><label>Комментарий</label><textarea class="form-control" id="recComment" rows="2"></textarea></div>
+      <h4 class="mb-2">Товары:</h4>
+      <div id="recItems"></div>
+      <button class="btn btn-outline btn-sm mt-2" onclick="addReceivingItemRow()">➕ Добавить товар</button>
+      <div class="form-group mt-4">
+        <label>Документы:</label>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer">📎 Прикрепить<input type="file" multiple onchange="handleDocUpload(event,'recDocs')" style="display:none"></label>
+        <div id="recDocsList" class="mt-2 text-sm text-muted"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('receivingModal')">Отмена</button>
+      <button class="btn btn-success" onclick="saveReceiving()">✅ Создать приёмку</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shipping Modal -->
+<div class="modal-overlay" id="shippingModal">
+  <div class="modal">
+    <div class="modal-header"><h3>Новая отгрузка</h3><button class="modal-close" onclick="closeModal('shippingModal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Клиент / Магазин</label><input type="text" class="form-control" id="shipClient"></div>
+        <div class="form-group"><label>Номер заказа</label><input type="text" class="form-control" id="shipOrder"></div>
+      </div>
+      <div class="form-group"><label>Адрес доставки</label><input type="text" class="form-control" id="shipAddress"></div>
+      <h4 class="mb-2">Товары:</h4>
+      <div id="shipItems"></div>
+      <button class="btn btn-outline btn-sm mt-2" onclick="addShippingItemRow()">➕ Добавить товар</button>
+      <div class="form-group mt-4">
+        <label>Документы:</label>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer">📎 Прикрепить<input type="file" multiple onchange="handleDocUpload(event,'shipDocs')" style="display:none"></label>
+        <div id="shipDocsList" class="mt-2 text-sm text-muted"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('shippingModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveShipping()">📤 Создать отгрузку</button>
+    </div>
+  </div>
+</div>
+
+<!-- Task Modal -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="taskModalTitle">Новая задача</h3><button class="modal-close" onclick="closeModal('taskModal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="taskId">
+      <div class="form-group"><label>Название задачи *</label><input type="text" class="form-control" id="taskName" required></div>
+      <div class="form-group"><label>Описание</label><textarea class="form-control" id="taskDesc" rows="2"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Сотрудник</label><select class="form-control" id="taskEmployee"></select></div>
+        <div class="form-group"><label>Приоритет</label><select class="form-control" id="taskPriority"><option value="normal">Обычный</option><option value="high">Высокий</option><option value="urgent">Срочный</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Время</label><input type="time" class="form-control" id="taskTime"></div>
+        <div class="form-group"><label>Дата</label><input type="date" class="form-control" id="taskDate"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('taskModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveTask()">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Employee Modal -->
+<div class="modal-overlay" id="employeeModal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="empModalTitle">Добавить сотрудника</h3><button class="modal-close" onclick="closeModal('employeeModal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="empId">
+      <div class="form-group">
+        <label>Фото:</label>
+        <div class="photo-upload" id="empPhotoUpload"><span>📷 Фото</span><input type="file" accept="image/*" onchange="handlePhotoUpload(event,'empPhoto')"></div>
+        <input type="hidden" id="empPhoto">
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>ФИО *</label><input type="text" class="form-control" id="empName" required></div>
+        <div class="form-group"><label>Должность</label><input type="text" class="form-control" id="empPosition"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Ставка в час (₽)</label><input type="number" class="form-control" id="empRate" value="300" min="0" step="10"></div>
+        <div class="form-group"><label>Телефон</label><input type="text" class="form-control" id="empPhone"></div>
+      </div>
+      <div class="form-group"><label>Email</label><input type="email" class="form-control" id="empEmail"></div>
+      <div class="form-group">
+        <label>Документы (паспорт, договор, ИНН):</label>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer">📎 Загрузить<input type="file" multiple onchange="handleDocUpload(event,'empDocs')" style="display:none"></label>
+        <div id="empDocsList" class="mt-2 text-sm text-muted"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('employeeModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">💾 Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Document Preview Modal -->
+<div class="modal-overlay" id="docPreviewModal">
+  <div class="modal" style="max-width:800px">
+    <div class="modal-header"><h3>Просмотр документа</h3><button class="modal-close" onclick="closeModal('docPreviewModal')">×</button></div>
+    <div class="modal-body" id="docPreviewContent"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('docPreviewModal')">Закрыть</button>
+      <button class="btn btn-primary" onclick="printDocument()">🖨️ Печать</button>
+    </div>
+  </div>
+</div>
 
 <script>
-"use strict";
-const W = {
-    user: null,
-    data: {
-        zones: [], cells: [], inventory: [], products: [], orders: [],
-        employees: [], activeTimers: {}, sessions: [], logs: [],
-        theme: 'light', recvScan: null, moveScan: null
-    },
-    scanBuf: '', scanTimer: null,
-
-    init() {
-        this.load(); 
-        this.applyTheme(); 
-        this.updateClock();
-        setInterval(() => this.updateClock(), 1000);
-        this.checkAuth(); 
-        
-        if (this.data.products.length === 0) {
-            this.seedData();
-        } else {
-            this.renderAll();
-        }
-        
-        document.addEventListener('keydown', e => this.handleKey(e));
-        setInterval(() => this.updateTimers(), 1000);
-        
-        setTimeout(() => {
-            const el = document.getElementById('recvScan');
-            if (el) el.focus();
-        }, 300);
-    },
-
-    load() {
-        try { 
-            const s = localStorage.getItem('wms_v3'); 
-            if (s) { 
-                const p = JSON.parse(s); 
-                for (let key in p) {
-                    if (this.data.hasOwnProperty(key)) {
-                        this.data[key] = p[key];
-                    }
-                }
-            } 
-        } catch(e) { console.error(e); }
-    },
-    save() {
-        try { localStorage.setItem('wms_v3', JSON.stringify(this.data)); } catch(e) {}
-        this.renderAll();
-    },
-    seedData() {
-        this.data.zones = [
-            { id: 'Z1', name: 'Приемка', type: 'receiving' },
-            { id: 'Z2', name: 'Хранение A', type: 'storage' },
-            { id: 'Z3', name: 'Хранение B', type: 'storage' },
-            { id: 'Z4', name: 'Отгрузка', type: 'shipping' },
-            { id: 'Z5', name: 'Брак', type: 'brak' }
-        ];
-        this.data.products = [
-            { id: 'SKU001', name: 'Футболка White L', cat: 'Одежда', price: 890, barcode: '4601' },
-            { id: 'SKU002', name: 'Коробка 20x20', cat: 'Упаковка', price: 55, barcode: '4602' },
-            { id: 'SKU003', name: 'Пленка стрейч', cat: 'Упаковка', price: 450, barcode: '4603' }
-        ];
-        let idx = 0;
-        const zoneMap = [
-            { zid: 'Z1', count: 4, letter: 'A' },
-            { zid: 'Z2', count: 16, letter: 'B' },
-            { zid: 'Z3', count: 16, letter: 'C' },
-            { zid: 'Z4', count: 4, letter: 'D' },
-            { zid: 'Z5', count: 4, letter: 'E' }
-        ];
-        zoneMap.forEach(z => {
-            for (let i = 1; i <= z.count; i++) {
-                this.data.cells.push({
-                    id: 'C' + String(idx).padStart(3, '0'),
-                    zoneId: z.zid,
-                    location: `${z.letter}-${String(Math.ceil(i/4)).padStart(2,'0')}-${((i-1)%4)+1}`,
-                    capacity: 100
-                });
-                idx++;
-            }
-        });
-        this.data.inventory = [
-            { cellId: 'C005', sku: 'SKU001', qty: 50 },
-            { cellId: 'C006', sku: 'SKU001', qty: 30 },
-            { cellId: 'C025', sku: 'SKU002', qty: 120 },
-            { cellId: 'C040', sku: 'SKU003', qty: 15 }
-        ];
-        this.addLog('Система', 'Инициализация склада');
-        this.save();
-    },
-
-    // === АВТОРИЗАЦИЯ ===
-    checkAuth() { 
-        const u = localStorage.getItem('wms_user'); 
-        if (u) { this.user = JSON.parse(u); this.updateAuthUI(); } 
-    },
-    showLogin() {
-        document.getElementById('modalContent').innerHTML = `
-            <h2>🔐 Вход</h2><p style="color:var(--text-sec); margin-bottom:0.8rem; font-size:0.85rem;">Выберите роль:</p>
-            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.8rem;">
-                <button class="btn" onclick="W.login('admin')">👑 Админ</button>
-                <button class="btn btn-outline" onclick="W.login('manager')">📋 Менеджер</button>
-                <button class="btn btn-outline" onclick="W.login('worker')">👷 Сотрудник</button>
-            </div>
-            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button></div>`;
-        document.getElementById('modal').style.display = 'flex';
-    },
-    login(role) {
-        this.user = { id: Date.now(), name: {admin:'Админ',manager:'Менеджер',worker:'Сотрудник'}[role], role };
-        localStorage.setItem('wms_user', JSON.stringify(this.user));
-        this.updateAuthUI(); 
-        this.closeModal(); 
-        this.toast('✅ Авторизация успешна', 'success');
-    },
-    logout() { 
-        this.user = null; 
-        localStorage.removeItem('wms_user'); 
-        this.updateAuthUI(); 
-        this.nav('dashboard'); 
-        this.toast('🚪 Вы вышли', 'warning'); 
-    },
-    updateAuthUI() {
-        const lb = document.getElementById('loginBtn'), up = document.getElementById('userPanel');
-        if (this.user) {
-            lb.style.display='none'; 
-            up.style.display='flex';
-            document.getElementById('userName').textContent = this.user.name;
-            const rb = document.getElementById('userRole'); 
-            rb.textContent = this.user.role; 
-            rb.className = 'role-badge ' + this.user.role;
-            document.body.setAttribute('data-role', this.user.role);
-        } else { 
-            lb.style.display='block'; 
-            up.style.display='none'; 
-            document.body.removeAttribute('data-role'); 
-        }
-    },
-    can(action) { 
-        if (!this.user) return false; 
-        return this.user.role === 'admin' || action === 'read' || (action === 'write' && this.user.role === 'manager'); 
-    },
-
-    // === ТЕМА И ЧАСЫ ===
-    toggleTheme() { 
-        this.data.theme = this.data.theme === 'light' ? 'dark' : 'light'; 
-        this.applyTheme(); 
-        this.save(); 
-    },
-    applyTheme() {
-        document.body.setAttribute('data-theme', this.data.theme);
-        document.getElementById('themeBtn').textContent = this.data.theme === 'dark' ? '☀️ Светлая' : '🌙 Тёмная';
-    },
-    updateClock() { 
-        const n = new Date(); 
-        document.getElementById('clock').textContent = n.toLocaleTimeString('ru-RU'); 
-    },
-
-    // === СКАНЕР ===
-    handleKey(e) {
-        const el = document.activeElement;
-        if (document.getElementById('modal').style.display === 'flex') return;
-        if (el?.tagName === 'INPUT' && el.id !== 'recvScan' && el.id !== 'moveScan') return;
-
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const code = el?.value?.trim() || this.scanBuf.trim();
-            if (code && code.length >= 2) {
-                this.processScan(code);
-                if (el) el.value = '';
-            }
-            this.scanBuf = '';
-            return;
-        }
-        if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-            this.scanBuf += e.key;
-            clearTimeout(this.scanTimer);
-            this.scanTimer = setTimeout(() => { this.scanBuf = ''; }, 150);
-        }
-    },
-    processScan(code) {
-        const emp = this.data.employees.find(e => e.id === code || e.barcode === code);
-        if (emp) return this.toggleShift(emp.id);
-        
-        const prod = this.data.products.find(p => p.id === code || p.barcode === code);
-        if (prod) {
-            const activeSection = document.querySelector('.section.active')?.id;
-            if (activeSection === 'receiving') {
-                this.data.recvScan = prod;
-                this.showRecvInfo(prod);
-            } else if (activeSection === 'movement') {
-                this.data.moveScan = prod;
-                document.getElementById('moveProd').value = `${prod.name} (${prod.id})`;
-                const inv = this.data.inventory.find(i => i.sku === prod.id);
-                document.getElementById('moveFrom').value = inv ? this.data.cells.find(c => c.id === inv.cellId)?.location || inv.cellId : 'Не найдено';
-            } else {
-                this.toast(`📦 ${prod.name} | SKU: ${prod.id} | Barcode: ${prod.barcode}`, 'info');
-            }
-            return;
-        }
-
-        const cell = this.data.cells.find(c => c.id === code || c.location === code);
-        if (cell) {
-            const activeSection = document.querySelector('.section.active')?.id;
-            if (activeSection === 'receiving') {
-                document.getElementById('recvCell').value = cell.id;
-            } else if (activeSection === 'movement') {
-                document.getElementById('moveTo').value = cell.id;
-            }
-            this.toast(`📍 Ячейка: ${cell.location} (${this.getZoneName(cell.zoneId)})`, 'info');
-            return;
-        }
-        this.toast('❌ Не распознано: ' + code, 'error');
-    },
-
-    // === УЧЁТ ВРЕМЕНИ ===
-    toggleShift(empId) {
-        const now = Date.now(), today = new Date().toISOString().split('T')[0];
-        const emp = this.data.employees.find(e => e.id === empId);
-        if (!emp) return this.toast('❌ Сотрудник не найден', 'error');
-        if (this.data.activeTimers[empId]) {
-            const start = this.data.activeTimers[empId];
-            const dur = Math.floor((now - start) / 1000);
-            delete this.data.activeTimers[empId];
-            this.data.sessions.push({ empId, date: today, start, end: now, duration: dur });
-            const h = Math.floor(dur/3600), m = Math.floor((dur%3600)/60);
-            const pay = ((dur/3600)*emp.rate).toFixed(0);
-            this.toast(`✅ ${emp.name}: ${h}ч ${m}м | ЗП: ${pay}₽`, 'success');
-        } else {
-            this.data.activeTimers[empId] = now;
-            this.toast(`🔵 ${emp.name} начал смену`, 'success');
-        }
-        this.save();
-    },
-    calcToday(empId) {
-        let s = 0, today = new Date().toISOString().split('T')[0];
-        this.data.sessions.forEach(x => { if (x.empId === empId && x.date === today) s += x.duration; });
-        if (this.data.activeTimers[empId]) s += Math.floor((Date.now() - this.data.activeTimers[empId]) / 1000);
-        return s;
-    },
-    updateTimers() {
-        document.querySelectorAll('.live-timer').forEach(el => {
-            const empId = el.dataset.emp;
-            if (this.data.activeTimers[empId]) {
-                const sec = Math.floor((Date.now() - this.data.activeTimers[empId]) / 1000);
-                el.textContent = `${String(Math.floor(sec/3600)).padStart(2,'0')}:${String(Math.floor((sec%3600)/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
-            }
-        });
-    },
-
-    // === ЛОГИРОВАНИЕ ===
-    addLog(actor, msg) {
-        this.data.logs.unshift({ time: new Date().toLocaleTimeString('ru-RU'), actor: this.user ? `${actor} (${this.user.name})` : actor, msg });
-        if (this.data.logs.length > 100) this.data.logs.pop();
-    },
-
-    // === ЗОНЫ ===
-    renderZones() {
-        const el = document.getElementById('zonesList'); 
-        if (!el) return;
-        el.innerHTML = this.data.zones.map(z => {
-            const cells = this.data.cells.filter(c => c.zoneId === z.id);
-            const used = cells.filter(c => this.data.inventory.some(i => i.cellId === c.id && i.qty > 0)).length;
-            const totalQty = this.data.inventory.filter(i => cells.some(c => c.id === i.cellId)).reduce((s, i) => s + i.qty, 0);
-            return `<div class="card" style="border-left: 4px solid var(--zone-${z.type});">
-                <div style="display:flex; justify-content:space-between; align-items:start;">
-                    <div><h4>${z.name}</h4><span class="zone-tag ${z.type}">${z.type}</span></div>
-                    <button class="btn btn-sm btn-danger admin-only" onclick="W.delZone('${z.id}')">🗑️</button>
-                </div>
-                <div style="margin-top:0.5rem; font-size:0.8rem; color:var(--text-sec);">
-                    <div>Ячеек: ${cells.length} | Занято: ${used}</div>
-                    <div>Товаров: ${totalQty} шт</div>
-                    <div class="progress-bar"><div class="progress-fill" style="width:${cells.length ? (used/cells.length*100) : 0}%; background:var(--zone-${z.type})"></div></div>
-                </div>
-            </div>`;
-        }).join('');
-    },
-    modalZone() {
-        if (!this.can('write')) return this.toast('❌ Нет прав', 'error');
-        document.getElementById('modalContent').innerHTML = `
-            <h2>➕ Зона склада</h2>
-            <div class="form-group"><label>Название</label><input id="zName"></div>
-            <div class="form-group"><label>Тип</label><select id="zType"><option value="receiving">Приемка</option><option value="storage">Хранение</option><option value="shipping">Отгрузка</option><option value="brak">Брак</option></select></div>
-            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button><button class="btn" onclick="W.addZone()">Создать</button></div>`;
-        document.getElementById('modal').style.display = 'flex';
-    },
-    addZone() {
-        const name = document.getElementById('zName').value.trim();
-        if (!name) return alert('Введите название');
-        this.data.zones.push({ id: 'Z' + Date.now().toString().slice(-3), name: name, type: document.getElementById('zType').value });
-        this.save(); 
-        this.closeModal(); 
-        this.toast('✅ Зона создана', 'success');
-    },
-    delZone(id) {
-        if (!confirm('Удалить зону и все ячейки?')) return;
-        const cells = this.data.cells.filter(c => c.zoneId === id).map(c => c.id);
-        this.data.inventory = this.data.inventory.filter(i => !cells.includes(i.cellId));
-        this.data.cells = this.data.cells.filter(c => c.zoneId !== id);
-        this.data.zones = this.data.zones.filter(z => z.id !== id);
-        this.save(); 
-        this.toast('🗑️ Зона удалена', 'success');
-    },
-
-    // === ЯЧЕЙКИ ===
-    renderCells() {
-        const el = document.getElementById('cellsGrid'); 
-        if (!el) return;
-        const zoneFilter = document.getElementById('cellZoneFilter')?.value || 'all';
-        const cells = zoneFilter === 'all' ? this.data.cells : this.data.cells.filter(c => c.zoneId === zoneFilter);
-        
-        el.innerHTML = cells.map(c => {
-            const zone = this.data.zones.find(z => z.id === c.zoneId);
-            const items = this.data.inventory.filter(i => i.cellId === c.id && i.qty > 0);
-            const totalQty = items.reduce((s, i) => s + i.qty, 0);
-            const isEmpty = items.length === 0;
-            return `<div class="cell-item zone-${zone?.type || 'storage'} ${isEmpty ? 'empty' : ''}" onclick="W.cellDetail('${c.id}')">
-                <div class="loc">${c.location}</div>
-                <div class="info">${isEmpty ? 'Пусто' : items.length + ' тов.<br>' + totalQty + ' шт'}</div>
-            </div>`;
-        }).join('');
-    },
-    cellDetail(cellId) {
-        const cell = this.data.cells.find(c => c.id === cellId);
-        const zone = this.data.zones.find(z => z.id === cell.zoneId);
-        const items = this.data.inventory.filter(i => i.cellId === cellId && i.qty > 0);
-        let html = `<h2>📍 Ячейка: ${cell.location}</h2>
-            <p style="color:var(--text-sec); margin-bottom:0.8rem;">Зона: ${zone?.name || cell.zoneId} | ID: ${cell.id} | Вместимость: ${cell.capacity}</p>`;
-        if (items.length === 0) {
-            html += '<p style="color:var(--text-sec);">Ячейка пуста</p>';
-        } else {
-            html += '<div class="table-wrap"><table><thead><tr><th>SKU</th><th>Товар</th><th>Кол-во</th></tr></thead><tbody>';
-            items.forEach(i => {
-                const p = this.data.products.find(x => x.id === i.sku);
-                html += `<tr><td>${i.sku}</td><td>${p?.name || '-'}</td><td><b>${i.qty}</b></td></tr>`;
-            });
-            html += '</tbody></table></div>';
-        }
-        html += `<div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Закрыть</button></div>`;
-        document.getElementById('modalContent').innerHTML = html;
-        document.getElementById('modal').style.display = 'flex';
-    },
-    modalCell() {
-        if (!this.can('write')) return this.toast('❌ Нет прав', 'error');
-        const opts = this.data.zones.map(z => `<option value="${z.id}">${z.name} (${z.type})</option>`).join('');
-        document.getElementById('modalContent').innerHTML = `
-            <h2>➕ Ячейка</h2>
-            <div class="form-group"><label>Локация (например: A-01-02)</label><input id="cLoc"></div>
-            <div class="form-group"><label>Зона</label><select id="cZone">${opts}</select></div>
-            <div class="form-group"><label>Вместимость</label><input id="cCap" type="number" value="100"></div>
-            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button><button class="btn" onclick="W.addCell()">Создать</button></div>`;
-        document.getElementById('modal').style.display = 'flex';
-    },
-    addCell() {
-        const loc = document.getElementById('cLoc').value.trim();
-        if (!loc) return alert('Введите локацию');
-        this.data.cells.push({ 
-            id: 'C' + Date.now().toString().slice(-3), 
-            zoneId: document.getElementById('cZone').value, 
-            location: loc, 
-            capacity: Number(document.getElementById('cCap').value) || 100 
-        });
-        this.save(); 
-        this.closeModal(); 
-        this.toast('✅ Ячейка создана', 'success');
-    },
-    generateCells() {
-        if (!confirm('Сгенерировать 4 ячейки для каждой зоны?')) return;
-        this.data.zones.forEach(z => {
-            const count = this.data.cells.filter(c => c.zoneId === z.id).length;
-            if (count < 4) {
-                for (let i = count; i < count + 4; i++) {
-                    this.data.cells.push({ 
-                        id: 'C' + Date.now().toString().slice(-3) + i, 
-                        zoneId: z.id, 
-                        location: `${z.name.charAt(0)}-${String(Math.floor(i/4)+1).padStart(2,'0')}-${(i%4)+1}`, 
-                        capacity: 100 
-                    });
-                }
-            }
-        });
-        this.save(); 
-        this.toast('✅ Ячейки сгенерированы', 'success');
-    },
-
-    // === ПРИЕМКА ===
-    showRecvInfo(prod) {
-        const el = document.getElementById('recvInfo');
-        el.style.display = 'block';
-        el.innerHTML = `<strong>📦 ${prod.name}</strong><br><span style="font-size:0.8rem; color:var(--text-sec);">SKU: ${prod.id} | Barcode: ${prod.barcode} | Цена: ${prod.price}₽</span>`;
-    },
-    placeItem() {
-        const prod = this.data.recvScan;
-        if (!prod) return this.toast('❌ Сначала отсканируйте товар', 'error');
-        const cellId = document.getElementById('recvCell').value;
-        const qty = parseInt(document.getElementById('recvQty').value) || 1;
-        if (!cellId) return this.toast('❌ Выберите ячейку', 'error');
-        if (qty <= 0) return this.toast('❌ Кол-во должно быть > 0', 'error');
-
-        const existing = this.data.inventory.find(i => i.cellId === cellId && i.sku === prod.id);
-        if (existing) {
-            existing.qty += qty;
-        } else {
-            this.data.inventory.push({ cellId, sku: prod.id, qty });
-        }
-
-        this.addLog('Приемка', `${prod.name} → ${cellId} x${qty}`);
-        this.toast(`✅ ${prod.name} размещен в ${cellId} x${qty}`, 'success');
-        
-        const tb = document.getElementById('recvLog');
-        if (tb) {
-            tb.insertAdjacentHTML('afterbegin', `<tr><td>${new Date().toLocaleTimeString('ru-RU')}</td><td>${prod.name}</td><td>${prod.id}</td><td><span class="badge-loc">${this.data.cells.find(c => c.id === cellId)?.location || cellId}</span></td><td>${qty}</td></tr>`);
-        }
-        
-        this.data.recvScan = null;
-        document.getElementById('recvInfo').style.display = 'none';
-        document.getElementById('recvScan').value = '';
-        document.getElementById('recvScan').focus();
-        this.save();
-    },
-
-    // === ОСТАТКИ ===
-    renderInventory() {
-        const el = document.getElementById('invTable'); 
-        if (!el) return;
-        const zoneFilter = document.getElementById('invZoneFilter')?.value || 'all';
-        const search = document.getElementById('invSearch')?.value.toLowerCase() || '';
-        
-        let inv = this.data.inventory.filter(i => i.qty > 0);
-        if (search) {
-            const prodIds = this.data.products.filter(p => p.id.toLowerCase().includes(search) || p.name.toLowerCase().includes(search)).map(p => p.id);
-            inv = inv.filter(i => prodIds.includes(i.sku));
-        }
-        if (zoneFilter !== 'all') {
-            const zoneCells = this.data.cells.filter(c => c.zoneId === zoneFilter).map(c => c.id);
-            inv = inv.filter(i => zoneCells.includes(i.cellId));
-        }
-
-        el.innerHTML = inv.map(i => {
-            const p = this.data.products.find(x => x.id === i.sku);
-            const c = this.data.cells.find(x => x.id === i.cellId);
-            const z = c ? this.data.zones.find(x => x.id === c.zoneId) : null;
-            return `<tr>
-                <td><span class="badge-loc">${i.sku}</span></td>
-                <td>${p?.name || '-'}</td>
-                <td><span class="badge-loc">${c?.location || i.cellId}</span></td>
-                <td><span class="zone-tag ${z?.type || 'storage'}">${z?.name || '-'}</span></td>
-                <td><b>${i.qty}</b></td>
-                <td class="admin-only"><button class="btn btn-sm btn-danger" onclick="W.delInv('${i.cellId}','${i.sku}')">🗑️</button></td>
-            </tr>`;
-        }).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--text-sec); padding:1rem;">Нет остатков</td></tr>';
-
-        // Обновить фильтр зон
-        const sel = document.getElementById('invZoneFilter');
-        if (sel) {
-            while (sel.options.length > 1) sel.remove(1);
-            this.data.zones.forEach(z => { 
-                const opt = document.createElement('option'); 
-                opt.value = z.id; 
-                opt.textContent = z.name; 
-                sel.appendChild(opt); 
-            });
-        }
-    },
-    delInv(cellId, sku) {
-        if (!confirm('Удалить остаток?')) return;
-        this.data.inventory = this.data.inventory.filter(i => !(i.cellId === cellId && i.sku === sku));
-        this.save(); 
-        this.toast('🗑️ Удалено', 'success');
-    },
-    exportInventory() {
-        if (typeof XLSX === 'undefined') return this.toast('❌ XLSX не загружена', 'error');
-        const rows = this.data.inventory.filter(i => i.qty > 0).map(i => {
-            const p = this.data.products.find(x => x.id === i.sku);
-            const c = this.data.cells.find(x => x.id === i.cellId);
-            return { SKU: i.sku, Товар: p?.name || i.sku, Ячейка: c?.location || i.cellId, Зона: this.getZoneName(c?.zoneId), Остаток: i.qty };
-        });
-        if (rows.length === 0) return this.toast('❌ Нет данных для экспорта', 'error');
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const wb = XLSX.utils.book_new(); 
-        XLSX.utils.book_append_sheet(wb, ws, 'Остатки');
-        XLSX.writeFile(wb, `WMS_Inventory_${new Date().toISOString().split('T')[0]}.xlsx`);
-        this.toast('📥 Экспорт остатков', 'success');
-    },
-
-    // === ПЕРЕМЕЩЕНИЯ ===
-    moveItem() {
-        const prod = this.data.moveScan;
-        const qty = parseInt(document.getElementById('moveQty').value) || 1;
-        const toCell = document.getElementById('moveTo').value;
-        if (!prod) return this.toast('❌ Отсканируйте товар', 'error');
-        if (!toCell) return this.toast('❌ Выберите целевую ячейку', 'error');
-        if (qty <= 0) return this.toast('❌ Кол-во > 0', 'error');
-
-        const invFrom = this.data.inventory.find(i => i.sku === prod.id && i.qty >= qty);
-        if (!invFrom) return this.toast('❌ Нет достаточного остатка в одной ячейке', 'error');
-
-        const fromCell = invFrom.cellId;
-        if (fromCell === toCell) return this.toast('❌ Откуда и куда совпадают', 'error');
-
-        invFrom.qty -= qty;
-        if (invFrom.qty === 0) this.data.inventory = this.data.inventory.filter(i => i.qty > 0);
-
-        const existing = this.data.inventory.find(i => i.cellId === toCell && i.sku === prod.id);
-        if (existing) { existing.qty += qty; }
-        else { this.data.inventory.push({ cellId: toCell, sku: prod.id, qty }); }
-
-        this.addLog('Перемещение', `${prod.name}: ${fromCell} → ${toCell} x${qty}`);
-        this.toast(`🔄 Перемещено: ${prod.name} x${qty}`, 'success');
-
-        const tb = document.getElementById('moveLog');
-        if (tb) {
-            const fromLoc = this.data.cells.find(c => c.id === fromCell)?.location || fromCell;
-            const toLoc = this.data.cells.find(c => c.id === toCell)?.location || toCell;
-            tb.insertAdjacentHTML('afterbegin', `<tr><td>${new Date().toLocaleTimeString('ru-RU')}</td><td>${prod.name}</td><td><span class="badge-loc">${fromLoc}</span></td><td><span class="badge-loc">${toLoc}</span></td><td>${qty}</td></tr>`);
-        }
-        
-        this.data.moveScan = null;
-        document.getElementById('moveProd').value = '';
-        document.getElementById('moveFrom').value = '';
-        document.getElementById('moveScan').value = '';
-        document.getElementById('moveScan').focus();
-        this.save();
-    },
-
-    // === ОТБОР ===
-    renderOrders() {
-        const el = document.getElementById('ordersList'); 
-        if (!el) return;
-        if (this.data.orders.length === 0) {
-            el.innerHTML = '<p style="color:var(--text-sec); text-align:center; padding:1rem;">Нет заказов. Нажмите "➕ Новый заказ"</p>';
-            return;
-        }
-        el.innerHTML = this.data.orders.map(o => {
-            const items = (o.items || []).map(it => {
-                const p = this.data.products.find(x => x.id === it.sku);
-                const avail = this.data.inventory.filter(i => i.sku === it.sku).reduce((s, i) => s + i.qty, 0);
-                return `<div style="display:flex; justify-content:space-between; padding:0.3rem 0; border-bottom:1px solid var(--border); font-size:0.85rem;">
-                    <span>${p?.name || it.sku} (${avail} на складе)</span><span>${it.qty} шт</span>
-                </div>`;
-            }).join('');
-            return `<div class="card" style="border-left: 4px solid ${o.status === 'completed' ? 'var(--success)' : o.status === 'picking' ? 'var(--warning)' : 'var(--primary)'};">
-                <div style="display:flex; justify-content:space-between; align-items:start;">
-                    <div><h4>Заказ ${o.id}</h4><span style="font-size:0.8rem; color:var(--text-sec);">${o.date} | ${o.contr}</span></div>
-                    <span class="status ${o.status === 'completed' ? 'on' : o.status === 'picking' ? 'busy' : 'off'}">${o.status}</span>
-                </div>
-                <div style="margin:0.5rem 0; padding:0.5rem; background:var(--hover); border-radius:4px;">${items}</div>
-                <div style="display:flex; gap:0.3rem;">
-                    <button class="btn btn-sm btn-success" onclick="W.pickOrder('${o.id}')" ${o.status !== 'new' ? 'disabled' : ''}>📦 Подобрать</button>
-                    <button class="btn btn-sm btn-danger" onclick="W.delOrder('${o.id}')">🗑️</button>
-                </div>
-            </div>`;
-        }).join('');
-    },
-    modalOrder() {
-        if (!this.can('write')) return this.toast('❌ Нет прав', 'error');
-        document.getElementById('modalContent').innerHTML = `
-            <h2>➕ Новый заказ</h2>
-            <div class="form-group"><label>Контрагент / № заказа</label><input id="oContr"></div>
-            <div id="orderItems">
-                <div class="form-group"><label>SKU</label><input class="o-sku" placeholder="SKU001"></div>
-                <div class="form-group"><label>Кол-во</label><input class="o-qty" type="number" value="1"></div>
-            </div>
-            <button class="btn btn-sm btn-outline" onclick="W.addOrderRow()">+ Позиция</button>
-            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button><button class="btn" onclick="W.createOrder()">Создать</button></div>`;
-        document.getElementById('modal').style.display = 'flex';
-    },
-    addOrderRow() {
-        document.getElementById('orderItems').insertAdjacentHTML('beforeend', `
-            <div class="form-group"><label>SKU</label><input class="o-sku" placeholder="SKU..."></div>
-            <div class="form-group"><label>Кол-во</label><input class="o-qty" type="number" value="1"></div>`);
-    },
-    createOrder() {
-        const skus = document.querySelectorAll('.o-sku');
-        const qtys = document.querySelectorAll('.o-qty');
-        const items = [];
-        for(let i=0; i<skus.length; i++) {
-            if (skus[i].value) items.push({ sku: skus[i].value.trim(), qty: parseInt(qtys[i].value) || 1 });
-        }
-        if (items.length === 0) return alert('Добавьте хотя бы одну позицию');
-        this.data.orders.push({ 
-            id: 'ORD' + Date.now().toString().slice(-4), 
-            date: new Date().toISOString().split('T')[0], 
-            contr: document.getElementById('oContr').value.trim() || '-', 
-            status: 'new', 
-            items 
-        });
-        this.save(); 
-        this.closeModal(); 
-        this.toast('✅ Заказ создан', 'success');
-    },
-    pickOrder(orderId) {
-        const order = this.data.orders.find(o => o.id === orderId);
-        if (!order) return;
-        let errors = [];
-        order.items.forEach(it => {
-            const available = this.data.inventory.filter(i => i.sku === it.sku).reduce((s, i) => s + i.qty, 0);
-            if (available < it.qty) errors.push(`${it.sku}: нужно ${it.qty}, доступно ${available}`);
-        });
-        if (errors.length > 0) return this.toast('❌ Недостаточно: ' + errors.join(', '), 'error');
-        
-        order.items.forEach(it => {
-            let remaining = it.qty;
-            while (remaining > 0) {
-                const inv = this.data.inventory.find(i => i.sku === it.sku && i.qty > 0);
-                if (!inv) break;
-                const take = Math.min(inv.qty, remaining);
-                inv.qty -= take;
-                remaining -= take;
-            }
-        });
-        this.data.inventory = this.data.inventory.filter(i => i.qty > 0);
-        order.status = 'completed';
-        this.addLog('Отбор', `Заказ ${orderId} подобран`);
-        this.toast('✅ Заказ подобран', 'success');
-        this.save();
-    },
-    delOrder(id) { 
-        if (confirm('Удалить заказ?')) { 
-            this.data.orders = this.data.orders.filter(o => o.id !== id); 
-            this.save(); 
-            this.toast('🗑️ Удалено', 'success'); 
-        } 
-    },
-
-    // === ТОВАРЫ ===
-    renderProducts() {
-        const el = document.getElementById('prodTable'); 
-        if (!el) return;
-        el.innerHTML = this.data.products.map((p, i) => {
-            const totalQty = this.data.inventory.filter(inv => inv.sku === p.id).reduce((s, inv) => s + inv.qty, 0);
-            return `<tr><td><span class="badge-loc">${p.id}</span></td><td>${p.name}</td><td>${p.cat}</td><td>${p.price}₽</td><td><b>${totalQty}</b></td><td class="admin-only"><button class="btn btn-sm btn-danger" onclick="W.delProd(${i})">🗑️</button></td></tr>`;
-        }).join('');
-    },
-    filterProducts() {
-        const q = document.getElementById('prodSearch').value.toLowerCase();
-        document.querySelectorAll('#prodTable tr').forEach(tr => tr.style.display = tr.innerText.toLowerCase().includes(q) ? '' : 'none');
-    },
-    modalProduct() {
-        if (!this.can('write')) return this.toast('❌ Нет прав', 'error');
-        document.getElementById('modalContent').innerHTML = `
-            <h2>➕ Товар</h2>
-            <div class="form-group"><label>SKU</label><input id="pSku"></div>
-            <div class="form-group"><label>Название</label><input id="pName"></div>
-            <div class="form-group"><label>Категория</label><input id="pCat"></div>
-            <div class="form-group"><label>Цена</label><input id="pPrice" type="number"></div>
-            <div class="form-group"><label>Штрихкод</label><input id="pBar"></div>
-            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button><button class="btn" onclick="W.addProd()">Сохранить</button></div>`;
-        document.getElementById('modal').style.display = 'flex';
-    },
-    addProd() {
-        if (!document.getElementById('pName').value.trim()) return;
-        this.data.products.push({ 
-            id: document.getElementById('pSku').value.trim() || 'SKU' + Date.now().toString().slice(-4), 
-            name: document.getElementById('pName').value.trim(), 
-            cat: document.getElementById('pCat').value.trim() || 'Общее', 
-            price: Number(document.getElementById('pPrice').value) || 0, 
-            barcode: document.getElementById('pBar').value.trim() || '' 
-        });
-        this.save(); 
-        this.closeModal(); 
-        this.toast('✅ Добавлен', 'success');
-    },
-    delProd(i) { 
-        if (!confirm('Удалить?')) return; 
-        this.data.products.splice(i, 1); 
-        this.save(); 
-        this.toast('🗑️ Удалено', 'success'); 
-    },
-    exportProducts() {
-        if (typeof XLSX === 'undefined') return this.toast('❌ XLSX не загружена', 'error');
-        const ws = XLSX.utils.json_to_sheet(this.data.products.map(p => {
-            const qty = this.data.inventory.filter(i => i.sku === p.id).reduce((s, i) => s + i.qty, 0);
-            return { SKU: p.id, Название: p.name, Категория: p.cat, Цена: p.price, Остаток: qty, Штрихкод: p.barcode };
-        }));
-        const wb = XLSX.utils.book_new(); 
-        XLSX.utils.book_append_sheet(wb, ws, 'Товары');
-        XLSX.writeFile(wb, `WMS_Products_${new Date().toISOString().split('T')[0]}.xlsx`);
-        this.toast('📥 Экспорт товаров', 'success');
-    },
-    importProducts(inp) {
-        if (!this.can('write') || !inp.files[0]) return;
-        if (typeof XLSX === 'undefined') return this.toast('❌ XLSX не загружена', 'error');
-        const r = new FileReader();
-        r.onload = e => {
-            try {
-                const wb = XLSX.read(e.target.result, { type: 'array' });
-                const d = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                let added = 0;
-                d.forEach(row => {
-                    if (!row.SKU && !row['SKU']) return;
-                    const id = row.SKU || row['SKU'];
-                    const ex = this.data.products.find(p => p.id === id);
-                    const obj = { id: id, name: row['Название'] || row.Name || 'Без имени', cat: row['Категория'] || row.Cat || 'Импорт', price: row['Цена'] || row.Price || 0, barcode: row['Штрихкод'] || '' };
-                    if (!ex) { this.data.products.push(obj); added++; } 
-                    else Object.assign(ex, obj);
-                });
-                this.save(); 
-                this.toast(`✅ Импортировано: ${added}`, 'success');
-            } catch (e) { this.toast('❌ Ошибка импорта: ' + e.message, 'error'); }
-            inp.value = '';
-        };
-        r.readAsArrayBuffer(inp.files[0]);
-    },
-
-    // === СОТРУДНИКИ ===
-    renderEmployees() {
-        const el = document.getElementById('empTable'); 
-        if (!el) return;
-        el.innerHTML = this.data.employees.map((e, i) => {
-            const sec = this.calcToday(e.id);
-            const isW = !!this.data.activeTimers[e.id];
-            const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-            const pay = Math.round((sec / 3600) * e.rate);
-            return `<tr>
-                <td>${e.id}</td><td>${e.name}</td><td>${e.role}</td><td>${e.rate}₽/ч</td>
-                <td><span class="status ${isW ? 'on' : 'off'}"><span class="dot ${isW ? 'active' : ''}"></span>${isW ? 'На смене' : 'Оффлайн'}</span></td>
-                <td><div>${h}ч ${m}м</div><div class="live-timer" data-emp="${e.id}">${isW ? this.formatMs(Date.now() - this.data.activeTimers[e.id]) : '--:--:--'}</div></td>
-                <td><b>${pay}₽</b></td>
-                <td class="admin-only"><button class="btn btn-sm ${isW ? 'btn-danger' : 'btn-success'}" onclick="W.toggleShift('${e.id}')">${isW ? '🔚 Завершить' : '🔵 Начать'}</button></td>
-            </tr>`;
-        }).join('');
-    },
-    modalEmployee() {
-        if (!this.can('write')) return this.toast('❌ Нет прав', 'error');
-        document.getElementById('modalContent').innerHTML = `
-            <h2>➕ Сотрудник</h2>
-            <div class="form-group"><label>ФИО</label><input id="mName"></div>
-            <div class="form-group"><label>Должность</label><input id="mRole"></div>
-            <div class="form-group"><label>Ставка (₽/ч)</label><input id="mRate" type="number" value="250"></div>
-            <div class="form-group"><label>QR/Штрихкод</label><input id="mBar" placeholder="EMP001"></div>
-            <div class="modal-actions"><button class="btn btn-secondary" onclick="W.closeModal()">Отмена</button><button class="btn" onclick="W.addEmp()">Сохранить</button></div>`;
-        document.getElementById('modal').style.display = 'flex';
-    },
-    addEmp() {
-        if (!document.getElementById('mName').value.trim()) return;
-        this.data.employees.push({ 
-            id: 'E' + Date.now().toString().slice(-4), 
-            name: document.getElementById('mName').value.trim(), 
-            role: document.getElementById('mRole').value.trim() || 'Сотрудник', 
-            rate: Number(document.getElementById('mRate').value) || 200, 
-            barcode: document.getElementById('mBar').value.trim() || '' 
-        });
-        this.save(); 
-        this.closeModal(); 
-        this.toast('✅ Добавлен', 'success');
-    },
-    formatMs(ms) { 
-        const s = Math.floor(ms / 1000); 
-        return `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; 
-    },
-
-    // === DASHBOARD ===
-    renderDash() {
-        const sg = document.getElementById('statsGrid'); 
-        if (!sg) return;
-        const totalProducts = this.data.products.length;
-        const totalCells = this.data.cells.length;
-        const uniqueUsedCells = new Set(this.data.inventory.filter(i => i.qty > 0).map(i => i.cellId)).size;
-        const totalQty = this.data.inventory.reduce((s, i) => s + i.qty, 0);
-        const activeEmps = Object.keys(this.data.activeTimers).length;
-        const ordersNew = this.data.orders.filter(o => o.status === 'new').length;
-
-        sg.innerHTML = `
-            <div class="stat-box"><div class="num">${totalProducts}</div><div class="label">Товаров</div></div>
-            <div class="stat-box"><div class="num">${totalQty.toLocaleString()}</div><div class="label">Единиц на складе</div></div>
-            <div class="stat-box"><div class="num">${uniqueUsedCells}/${totalCells}</div><div class="label">Занято ячеек</div></div>
-            <div class="stat-box"><div class="num">${activeEmps}</div><div class="label">На смене</div></div>
-            <div class="stat-box"><div class="num">${ordersNew}</div><div class="label">Заказов в работе</div></div>
-            <div class="stat-box"><div class="num">${this.data.logs.length}</div><div class="label">Операций</div></div>`;
-
-        const zs = document.getElementById('zoneStats');
-        if (zs) {
-            zs.innerHTML = this.data.zones.map(z => {
-                const cells = this.data.cells.filter(c => c.zoneId === z.id).map(c => c.id);
-                const used = cells.filter(c => this.data.inventory.some(i => i.cellId === c && i.qty > 0)).length;
-                const pct = cells.length ? Math.round(used / cells.length * 100) : 0;
-                return `<div style="margin-bottom:0.5rem;"><div style="display:flex; justify-content:space-between; font-size:0.8rem;"><span>${z.name}</span><span>${pct}% (${used}/${cells.length})</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%; background:var(--zone-${z.type})"></div></div></div>`;
-            }).join('');
-        }
-
-        const lt = document.getElementById('logTable');
-        if (lt) {
-            lt.innerHTML = this.data.logs.slice(0, 15).map(l => `<tr><td>${l.time}</td><td>${l.actor}</td><td>${l.msg}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-sec); padding:1rem;">Нет операций</td></tr>';
-        }
-    },
-
-    // === УТИЛИТЫ ===
-    getZoneName(zoneId) { 
-        return this.data.zones.find(z => z.id === zoneId)?.name || zoneId; 
-    },
-    closeModal() { 
-        document.getElementById('modal').style.display = 'none'; 
-    },
-    toast(msg, type = 'success') {
-        const t = document.createElement('div'); 
-        t.className = 'toast ' + type; 
-        t.textContent = msg;
-        document.getElementById('toasts').appendChild(t);
-        setTimeout(() => t.remove(), 2500);
-    },
-    nav(id) {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('#mainNav button').forEach(b => b.classList.remove('active'));
-        const target = document.getElementById(id);
-        if (target) target.classList.add('active');
-        
-        // Подсветка активной кнопки
-        const navBtns = document.querySelectorAll('#mainNav button');
-        navBtns.forEach(b => {
-            if (b.getAttribute('onclick')?.includes(`'${id}'`)) {
-                b.classList.add('active');
-            }
-        });
-        
-        setTimeout(() => {
-            if (id === 'receiving') document.getElementById('recvScan')?.focus();
-            if (id === 'movement') document.getElementById('moveScan')?.focus();
-            this.renderAll();
-        }, 100);
-    },
-    renderAll() { 
-        this.renderDash(); 
-        this.renderZones(); 
-        this.renderCells(); 
-        this.renderInventory(); 
-        this.renderOrders(); 
-        this.renderProducts(); 
-        this.renderEmployees(); 
-        this.fillSelects(); 
-    },
-    fillSelects() {
-        ['recvCell', 'moveTo'].forEach(selId => {
-            const sel = document.getElementById(selId);
-            if (sel) {
-                sel.innerHTML = '<option value="">Выберите ячейку...</option>';
-                this.data.zones.forEach(z => {
-                    const group = document.createElement('optgroup');
-                    group.label = z.name;
-                    this.data.cells.filter(c => c.zoneId === z.id).forEach(c => {
-                        const opt = document.createElement('option');
-                        opt.value = c.id;
-                        opt.textContent = `${c.location} (до ${c.capacity} шт)`;
-                        group.appendChild(opt);
-                    });
-                    sel.appendChild(group);
-                });
-            }
-        });
-    }
+// ==================== DATA LAYER ====================
+const DB = {
+  get(key) { try { return JSON.parse(localStorage.getItem('ff_'+key)) || []; } catch { return []; } },
+  set(key, val) { localStorage.setItem('ff_'+key, JSON.stringify(val)); },
+  getObj(key) { try { return JSON.parse(localStorage.getItem('ff_'+key)) || {}; } catch { return {}; } },
+  setObj(key, val) { localStorage.setItem('ff_'+key, JSON.stringify(val)); }
 };
 
-document.addEventListener('DOMContentLoaded', () => W.init());
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2,5); }
+function today() { return new Date().toISOString().split('T')[0]; }
+function now() { return new Date().toLocaleString('ru-RU'); }
+function formatMoney(n) { return Number(n||0).toLocaleString('ru-RU') + ' ₽'; }
+
+// ==================== TOAST ====================
+function toast(msg, type='success') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ==================== NAVIGATION ====================
+const pageTitles = {
+  dashboard: '📊 Дашборд', warehouse: '🏭 Склад', receiving: '📥 Приёмка',
+  shipping: '📤 Отгрузка', tasks: '✅ Задачи', employees: '👥 Сотрудники',
+  inventory: '📋 Инвентаризация', labels: '🏷️ Печать этикеток', documents: '📄 Документы'
+};
+
+document.querySelectorAll('.sidebar nav a[data-page]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const page = a.dataset.page;
+    document.querySelectorAll('.sidebar nav a').forEach(x => x.classList.remove('active'));
+    a.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-'+page).classList.add('active');
+    document.getElementById('pageTitle').textContent = pageTitles[page] || page;
+    document.getElementById('sidebar').classList.remove('open');
+    refreshPage(page);
+  });
+});
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const parent = btn.parentElement;
+    parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tabId = btn.dataset.tab;
+    const page = parent.closest('.page');
+    page.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    document.getElementById('tab-'+tabId).classList.add('active');
+  });
+});
+
+// ==================== REFRESH PAGES ====================
+function refreshPage(page) {
+  switch(page) {
+    case 'dashboard': renderDashboard(); break;
+    case 'warehouse': renderWarehouse(); break;
+    case 'receiving': renderReceiving(); break;
+    case 'shipping': renderShipping(); break;
+    case 'tasks': renderTasks(); break;
+    case 'employees': renderEmployees(); break;
+    case 'inventory': initInventory(); break;
+    case 'labels': initLabels(); break;
+    case 'documents': renderDocuments(); break;
+  }
+}
+
+// ==================== MODAL HELPERS ====================
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ==================== PHOTO UPLOAD ====================
+function handlePhotoUpload(event, hiddenId) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById(hiddenId).value = e.target.result;
+    const upload = document.getElementById(hiddenId.replace('Photo','')+'PhotoUpload') || event.target.parentElement;
+    upload.innerHTML = '<img src="'+e.target.result+'"><input type="file" accept="image/*" onchange="handlePhotoUpload(event,\''+hiddenId+'\')">';
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleDocUpload(event, docsKey) {
+  const files = Array.from(event.target.files);
+  let docs = DB.getObj(docsKey + '_docs');
+  files.forEach(f => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      docs.push({ name: f.name,  e.target.result, date: now() });
+      DB.setObj(docsKey + '_docs', docs);
+      renderDocsList(docsKey, docs);
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+function renderDocsList(docsKey, docs) {
+  const el = document.getElementById(docsKey + 'List');
+  if (!el) return;
+  el.innerHTML = docs.map((d,i) => `<span style="display:inline-block;margin:2px;padding:2px 8px;background:#edf2f7;border-radius:4px;font-size:12px">📎 ${d.name} <a href="#" onclick="event.preventDefault();downloadDoc('${docsKey}_docs',${i})">⬇️</a></span>`).join('');
+}
+
+function downloadDoc(key, idx) {
+  const docs = DB.getObj(key);
+  if (docs[idx]) {
+    const a = document.createElement('a');
+    a.href = docs[idx].data;
+    a.download = docs[idx].name;
+    a.click();
+  }
+}
+
+// ==================== WAREHOUSE ====================
+function openProductModal(id) {
+  document.getElementById('prodId').value = '';
+  document.getElementById('prodSku').value = '';
+  document.getElementById('prodName').value = '';
+  document.getElementById('prodCategory').value = '';
+  document.getElementById('prodLocation').value = '';
+  document.getElementById('prodQty').value = '0';
+  document.getElementById('prodCost').value = '0';
+  document.getElementById('prodPrice').value = '0';
+  document.getElementById('prodDesc').value = '';
+  document.getElementById('prodPhoto').value = '';
+  document.getElementById('productModalTitle').textContent = 'Добавить товар';
+  document.getElementById('prodDocsList').innerHTML = '';
+  const pu = document.getElementById('prodPhotoUpload');
+  pu.innerHTML = '<span>📷 Фото</span><input type="file" accept="image/*" onchange="handlePhotoUpload(event,\'prodPhoto\')">';
+
+  // Fill datalists
+  const products = DB.get('products');
+  const cats = [...new Set(products.map(p=>p.category).filter(Boolean))];
+  const locs = [...new Set(products.map(p=>p.location).filter(Boolean))];
+  document.getElementById('catList').innerHTML = cats.map(c=>`<option value="${c}">`).join('');
+  document.getElementById('locList').innerHTML = locs.map(l=>`<option value="${l}">`).join('');
+
+  if (id) {
+    const p = products.find(x => x.id === id);
+    if (p) {
+      document.getElementById('prodId').value = p.id;
+      document.getElementById('prodSku').value = p.sku;
+      document.getElementById('prodName').value = p.name;
+      document.getElementById('prodCategory').value = p.category||'';
+      document.getElementById('prodLocation').value = p.location||'';
+      document.getElementById('prodQty').value = p.qty;
+      document.getElementById('prodCost').value = p.cost;
+      document.getElementById('prodPrice').value = p.price;
+      document.getElementById('prodDesc').value = p.desc||'';
+      document.getElementById('prodPhoto').value = p.photo||'';
+      document.getElementById('productModalTitle').textContent = 'Редактировать товар';
+      if (p.photo) {
+        document.getElementById('prodPhotoUpload').innerHTML = '<img src="'+p.photo+'"><input type="file" accept="image/*" onchange="handlePhotoUpload(event,\'prodPhoto\')">';
+      }
+      const docs = DB.getObj('prodDocs_'+p.id);
+      renderDocsList('prodDocs_'+p.id, docs);
+    }
+  }
+  openModal('productModal');
+}
+
+function saveProduct() {
+  const id = document.getElementById('prodId').value;
+  const product = {
+    id: id || genId(),
+    sku: document.getElementById('prodSku').value.trim(),
+    name: document.getElementById('prodName').value.trim(),
+    category: document.getElementById('prodCategory').value.trim(),
+    location: document.getElementById('prodLocation').value.trim(),
+    qty: parseInt(document.getElementById('prodQty').value) || 0,
+    cost: parseFloat(document.getElementById('prodCost').value) || 0,
+    price: parseFloat(document.getElementById('prodPrice').value) || 0,
+    desc: document.getElementById('prodDesc').value.trim(),
+    photo: document.getElementById('prodPhoto').value,
+    createdAt: new Date().toISOString()
+  };
+  if (!product.sku || !product.name) { toast('Заполните артикул и название','error'); return; }
+
+  let products = DB.get('products');
+  if (id) {
+    const idx = products.findIndex(p => p.id === id);
+    if (idx >= 0) { product.createdAt = products[idx].createdAt; products[idx] = product; }
+  } else {
+    products.push(product);
+  }
+  DB.set('products', products);
+  closeModal('productModal');
+  renderWarehouse();
+  toast(id ? 'Товар обновлён' : 'Товар добавлен');
+}
+
+function deleteProduct(id) {
+  if (!confirm('Удалить товар?')) return;
+  let products = DB.get('products').filter(p => p.id !== id);
+  DB.set('products', products);
+  renderWarehouse();
+  toast('Товар удалён');
+}
+
+function renderWarehouse() {
+  let products = DB.get('products');
+  const search = (document.getElementById('warehouseSearch')?.value || '').toLowerCase();
+  const filterLoc = document.getElementById('warehouseFilterLocation')?.value || '';
+  const filterCat = document.getElementById('warehouseFilterCategory')?.value || '';
+
+  if (search) products = products.filter(p => (p.name+p.sku+p.category+p.location+p.desc).toLowerCase().includes(search));
+  if (filterLoc) products = products.filter(p => p.location === filterLoc);
+  if (filterCat) products = products.filter(p => p.category === filterCat);
+
+  // Update filter options
+  const allProducts = DB.get('products');
+  const locs = [...new Set(allProducts.map(p=>p.location).filter(Boolean))];
+  const cats = [...new Set(allProducts.map(p=>p.category).filter(Boolean))];
+  const fl = document.getElementById('warehouseFilterLocation');
+  const fc = document.getElementById('warehouseFilterCategory');
+  if (fl) { const v = fl.value; fl.innerHTML = '<option value="">Все места</option>' + locs.map(l=>`<option value="${l}" ${l===v?'selected':''}>${l}</option>`).join(''); }
+  if (fc) { const v = fc.value; fc.innerHTML = '<option value="">Все категории</option>' + cats.map(c=>`<option value="${c}" ${c===v?'selected':''}>${c}</option>`).join(''); }
+
+  const totalValue = allProducts.reduce((s,p) => s + (p.qty * p.cost), 0);
+
+  document.getElementById('warehouseTable').innerHTML = products.map(p => `
+    <tr>
+      <td>${p.photo ? `<img src="${p.photo}" class="table-img">` : '<div class="table-img" style="display:flex;align-items:center;justify-content:center;font-size:20px">📦</div>'}</td>
+      <td><strong>${esc(p.sku)}</strong></td>
+      <td>${esc(p.name)}</td>
+      <td><span class="badge badge-info">${esc(p.category||'—')}</span></td>
+      <td>${esc(p.location||'—')}</td>
+      <td><strong>${p.qty}</strong></td>
+      <td>${formatMoney(p.price)}</td>
+      <td>
+        ${DB.getObj('prodDocs_'+p.id).length > 0 ? `<span class="badge badge-success">${DB.getObj('prodDocs_'+p.id).length} 📎</span>` : '<span class="text-muted">—</span>'}
+      </td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="openProductModal('${p.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+
+  document.getElementById('warehouseCount').textContent = products.length + ' товаров';
+  document.getElementById('warehouseTotalValue').textContent = 'Общая стоимость: ' + formatMoney(totalValue);
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ==================== EXCEL IMPORT/EXPORT ====================
+function importExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws);
+      let products = DB.get('products');
+      let count = 0;
+      data.forEach(row => {
+        const sku = String(row['Артикул']||row['sku']||row['SKU']||'').trim();
+        const name = String(row['Название']||row['name']||row['Name']||'').trim();
+        if (!sku || !name) return;
+        const existing = products.find(p => p.sku === sku);
+        const p = {
+          id: existing ? existing.id : genId(),
+          sku, name,
+          category: String(row['Категория']||row['category']||'').trim(),
+          location: String(row['Место']||row['location']||row['Ячейка']||'').trim(),
+          qty: parseInt(row['Количество']||row['qty']||row['Qty']||0),
+          cost: parseFloat(row['Закупка']||row['cost']||row['Cost']||0),
+          price: parseFloat(row['Цена']||row['price']||row['Price']||0),
+          desc: String(row['Описание']||row['desc']||'').trim(),
+          photo: existing ? (existing.photo||'') : '',
+          createdAt: existing ? existing.createdAt : new Date().toISOString()
+        };
+        if (existing) {
+          const idx = products.findIndex(x => x.id === p.id);
+          products[idx] = p;
+        } else {
+          products.push(p);
+        }
+        count++;
+      });
+      DB.set('products', products);
+      renderWarehouse();
+      toast(`Импортировано ${count} товаров`);
+    } catch(err) { toast('Ошибка импорта: ' + err.message, 'error'); }
+  };
+  reader.readAsBinaryString(file);
+  event.target.value = '';
+}
+
+function exportWarehouseExcel() {
+  const products = DB.get('products');
+  if (!products.length) { toast('Нет данных для экспорта','error'); return; }
+  const ws = XLSX.utils.json_to_sheet(products.map(p => ({
+    'Артикул': p.sku, 'Название': p.name, 'Категория': p.category,
+    'Место хранения': p.location, 'Количество': p.qty,
+    'Цена закупки': p.cost, 'Цена продажи': p.price, 'Описание': p.desc
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Склад');
+  XLSX.writeFile(wb, 'Склад_'+today()+'.xlsx');
+  toast('Excel файл скачан');
+}
+
+function exportAllData() {
+  const data = {
+    products: DB.get('products'),
+    receivings: DB.get('receivings'),
+    shippings: DB.get('shippings'),
+    tasks: DB.get('tasks'),
+    employees: DB.get('employees'),
+    inventories: DB.get('inventories'),
+    exportDate: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'fulfillment_backup_'+today()+'.json';
+  a.click();
+  toast('Все данные экспортированы');
+}
+
+function importAllData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.products) DB.set('products', data.products);
+      if (data.receivings) DB.set('receivings', data.receivings);
+      if (data.shippings) DB.set('shippings', data.shippings);
+      if (data.tasks) DB.set('tasks', data.tasks);
+      if (data.employees) DB.set('employees', data.employees);
+      if (data.inventories) DB.set('inventories', data.inventories);
+      renderDashboard();
+      toast('Данные импортированы');
+    } catch(err) { toast('Ошибка импорта','error'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ==================== RECEIVING ====================
+function openReceivingModal() {
+  document.getElementById('recSupplier').value = '';
+  document.getElementById('recInvoice').value = '';
+  document.getElementById('recComment').value = '';
+  document.getElementById('recDocsList').innerHTML = '';
+  document.getElementById('recItems').innerHTML = '';
+  addReceivingItemRow();
+  openModal('receivingModal');
+}
+
+function addReceivingItemRow() {
+  const products = DB.get('products');
+  const div = document.getElementById('recItems');
+  const row = document.createElement('div');
+  row.className = 'form-row mb-2';
+  row.style.alignItems = 'end';
+  row.innerHTML = `
+    <div class="form-group" style="flex:2"><label>Товар</label><select class="form-control rec-item-product">${products.map(p=>`<option value="${p.id}">${p.sku} — ${p.name}</option>`).join('')}</select></div>
+    <div class="form-group" style="flex:1"><label>Кол-во</label><input type="number" class="form-control rec-item-qty" value="1" min="1"></div>
+    <div class="form-group"><button class="btn btn-danger btn-sm" onclick="this.closest('.form-row').remove()">✕</button></div>
+  `;
+  div.appendChild(row);
+}
+
+function saveReceiving() {
+  const items = [];
+  document.querySelectorAll('#recItems .form-row').forEach(row => {
+    const productId = row.querySelector('.rec-item-product').value;
+    const qty = parseInt(row.querySelector('.rec-item-qty').value) || 0;
+    if (productId && qty > 0) items.push({ productId, qty });
+  });
+  if (!items.length) { toast('Добавьте хотя бы один товар','error'); return; }
+
+  const rec = {
+    id: genId(),
+    number: 'ПР-' + (DB.get('receivings').length + 1),
+    date: now(),
+    supplier: document.getElementById('recSupplier').value.trim(),
+    invoice: document.getElementById('recInvoice').value.trim(),
+    comment: document.getElementById('recComment').value.trim(),
+    items,
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+
+  let receivings = DB.get('receivings');
+  receivings.push(rec);
+  DB.set('receivings', receivings);
+
+  // Update stock
+  let products = DB.get('products');
+  items.forEach(item => {
+    const p = products.find(x => x.id === item.productId);
+    if (p) p.qty += item.qty;
+  });
+  DB.set('products', products);
+
+  closeModal('receivingModal');
+  renderReceiving();
+  toast('Приёмка создана, товар добавлен на склад');
+}
+
+function renderReceiving() {
+  const receivings = DB.get('receivings').sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const statusMap = { pending: ['Ожидает','badge-warning'], confirmed: ['Подтверждена','badge-success'], cancelled: ['Отменена','badge-danger'] };
+
+  document.getElementById('receivingTable').innerHTML = receivings.map(r => {
+    const [label, cls] = statusMap[r.status] || ['—',''];
+    return `<tr>
+      <td><strong>${esc(r.number)}</strong></td>
+      <td>${esc(r.date)}</td>
+      <td>${esc(r.supplier||'—')}</td>
+      <td>${r.items.length} поз. / ${r.items.reduce((s,i)=>s+i.qty,0)} шт.</td>
+      <td><span class="badge ${cls}">${label}</span></td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="viewReceivingDoc('${r.id}')">📄</button>
+      </td>
+      <td>
+        ${r.status==='pending'?`<button class="btn btn-success btn-sm" onclick="confirmReceiving('${r.id}')">✅</button>`:''}
+        ${r.status==='pending'?`<button class="btn btn-danger btn-sm" onclick="cancelReceiving('${r.id}')">❌</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function confirmReceiving(id) {
+  let receivings = DB.get('receivings');
+  const r = receivings.find(x => x.id === id);
+  if (r) r.status = 'confirmed';
+  DB.set('receivings', receivings);
+  renderReceiving();
+  toast('Приёмка подтверждена');
+}
+
+function cancelReceiving(id) {
+  if (!confirm('Отменить приёмку?')) return;
+  let receivings = DB.get('receivings');
+  const r = receivings.find(x => x.id === id);
+  if (r && r.status === 'pending') {
+    r.status = 'cancelled';
+    let products = DB.get('products');
+    r.items.forEach(item => {
+      const p = products.find(x => x.id === item.productId);
+      if (p) p.qty = Math.max(0, p.qty - item.qty);
+    });
+    DB.set('products', products);
+  }
+  DB.set('receivings', receivings);
+  renderReceiving();
+  toast('Приёмка отменена');
+}
+
+function viewReceivingDoc(id) {
+  const r = DB.get('receivings').find(x => x.id === id);
+  if (!r) return;
+  const products = DB.get('products');
+  let html = `<div class="doc-preview" id="printableDoc">
+    <h2>Акт приёмки товара</h2>
+    <p><strong>№:</strong> ${esc(r.number)} | <strong>Дата:</strong> ${esc(r.date)}</p>
+    <p><strong>Поставщик:</strong> ${esc(r.supplier||'—')} | <strong>Накладная:</strong> ${esc(r.invoice||'—')}</p>
+    <table><thead><tr><th>№</th><th>Артикул</th><th>Название</th><th>Кол-во</th></tr></thead><tbody>
+    ${r.items.map((item,i) => {
+      const p = products.find(x => x.id === item.productId);
+      return `<tr><td>${i+1}</td><td>${esc(p?p.sku:'—')}</td><td>${esc(p?p.name:'—')}</td><td>${item.qty}</td></tr>`;
+    }).join('')}
+    </tbody></table>
+    <p><strong>Итого:</strong> ${r.items.reduce((s,i)=>s+i.qty,0)} шт.</p>
+    ${r.comment ? `<p><strong>Примечание:</strong> ${esc(r.comment)}</p>` : ''}
+    <div class="doc-signature"><div>Принял</div><div>Сдал</div></div>
+  </div>`;
+  document.getElementById('docPreviewContent').innerHTML = html;
+  openModal('docPreviewModal');
+}
+
+// SCANNER MODE
+let scanMode = 'manual';
+let scannedItems = [];
+
+function setScanMode(mode) {
+  scanMode = mode;
+  toast(mode === 'scanner' ? 'Режим сканера (ТЦД) активирован' : 'Режим ручного ввода');
+}
+
+function handleScanKey(event) {
+  if (event.key === 'Enter') {
+    addScannedItem();
+  }
+}
+
+function addScannedItem() {
+  const sku = document.getElementById('scanInput').value.trim();
+  const qty = parseInt(document.getElementById('scanQty').value) || 1;
+  if (!sku) { toast('Введите артикул','error'); return; }
+
+  const products = DB.get('products');
+  let product = products.find(p => p.sku === sku);
+  if (!product) {
+    // Auto-create
+    product = { id: genId(), sku, name: 'Товар '+sku, category:'', location:'', qty:0, cost:0, price:0, desc:'', photo:'', createdAt: new Date().toISOString() };
+    products.push(product);
+    DB.set('products', products);
+    toast('Новый товар автоматически создан: ' + sku, 'info');
+  }
+
+  scannedItems.push({ productId: product.id, qty, sku: product.sku, name: product.name });
+  document.getElementById('scanInput').value = '';
+  renderScannedItems();
+  toast(`✅ ${product.name} × ${qty}`);
+}
+
+function renderScannedItems() {
+  const el = document.getElementById('scannedItems');
+  if (!scannedItems.length) { el.innerHTML = '<p class="text-muted">Нет отсканированных товаров</p>'; return; }
+  el.innerHTML = scannedItems.map((item, i) => `
+    <div class="inventory-item">
+      <span>${i+1}</span>
+      <strong>${esc(item.sku)}</strong>
+      <span>${esc(item.name)}</span>
+      <span>× ${item.qty}</span>
+      <button class="btn btn-danger btn-sm" onclick="scannedItems.splice(${i},1);renderScannedItems()">✕</button>
+    </div>
+  `).join('');
+}
+
+// ==================== SHIPPING ====================
+function openShippingModal() {
+  document.getElementById('shipClient').value = '';
+  document.getElementById('shipOrder').value = '';
+  document.getElementById('shipAddress').value = '';
+  document.getElementById('shipDocsList').innerHTML = '';
+  document.getElementById('shipItems').innerHTML = '';
+  addShippingItemRow();
+  openModal('shippingModal');
+}
+
+function addShippingItemRow() {
+  const products = DB.get('products').filter(p => p.qty > 0);
+  const div = document.getElementById('shipItems');
+  const row = document.createElement('div');
+  row.className = 'form-row mb-2';
+  row.style.alignItems = 'end';
+  row.innerHTML = `
+    <div class="form-group" style="flex:2"><label>Товар</label><select class="form-control ship-item-product">${products.map(p=>`<option value="${p.id}" data-qty="${p.qty}">${p.sku} — ${p.name} (доступно: ${p.qty})</option>`).join('')}</select></div>
+    <div class="form-group" style="flex:1"><label>Кол-во</label><input type="number" class="form-control ship-item-qty" value="1" min="1"></div>
+    <div class="form-group"><button class="btn btn-danger btn-sm" onclick="this.closest('.form-row').remove()">✕</button></div>
+  `;
+  div.appendChild(row);
+}
+
+function saveShipping() {
+  const items = [];
+  document.querySelectorAll('#shipItems .form-row').forEach(row => {
+    const sel = row.querySelector('.ship-item-product');
+    const productId = sel.value;
+    const qty = parseInt(row.querySelector('.ship-item-qty').value) || 0;
+    const maxQty = parseInt(sel.options[sel.selectedIndex].dataset.qty) || 0;
+    if (productId && qty > 0) {
+      if (qty > maxQty) { toast('Недостаточно товара на складе','error'); return; }
+      items.push({ productId, qty });
+    }
+  });
+  if (!items.length) { toast('Добавьте хотя бы один товар','error'); return; }
+
+  const ship = {
+    id: genId(),
+    number: 'ОТ-' + (DB.get('shippings').length + 1),
+    date: now(),
+    client: document.getElementById('shipClient').value.trim(),
+    order: document.getElementById('shipOrder').value.trim(),
+    address: document.getElementById('shipAddress').value.trim(),
+    items, status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+
+  let shippings = DB.get('shippings');
+  shippings.push(ship);
+  DB.set('shippings', shippings);
+
+  let products = DB.get('products');
+  items.forEach(item => {
+    const p = products.find(x => x.id === item.productId);
+    if (p) p.qty -= item.qty;
+  });
+  DB.set('products', products);
+
+  closeModal('shippingModal');
+  renderShipping();
+  toast('Отгрузка создана');
+}
+
+function renderShipping() {
+  const shippings = DB.get('shippings').sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const statusMap = { pending: ['Ожидает','badge-warning'], shipped: ['Отгружено','badge-success'], cancelled: ['Отменена','badge-danger'] };
+
+  document.getElementById('shippingTable').innerHTML = shippings.map(s => {
+    const [label, cls] = statusMap[s.status] || ['—',''];
+    return `<tr>
+      <td><strong>${esc(s.number)}</strong></td>
+      <td>${esc(s.date)}</td>
+      <td>${esc(s.client||'—')}</td>
+      <td>${s.items.length} поз. / ${s.items.reduce((x,i)=>x+i.qty,0)} шт.</td>
+      <td><span class="badge ${cls}">${label}</span></td>
+      <td><button class="btn btn-outline btn-sm" onclick="viewShippingDoc('${s.id}')">📄</button></td>
+      <td>
+        ${s.status==='pending'?`<button class="btn btn-success btn-sm" onclick="confirmShipping('${s.id}')">🚚 Отгрузить</button>`:''}
+        ${s.status==='pending'?`<button class="btn btn-danger btn-sm" onclick="cancelShipping('${s.id}')">❌</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function confirmShipping(id) {
+  let shippings = DB.get('shippings');
+  const s = shippings.find(x => x.id === id);
+  if (s) s.status = 'shipped';
+  DB.set('shippings', shippings);
+  renderShipping();
+  toast('Отгрузка подтверждена');
+}
+
+function cancelShipping(id) {
+  if (!confirm('Отменить отгрузку и вернуть товар?')) return;
+  let shippings = DB.get('shippings');
+  const s = shippings.find(x => x.id === id);
+  if (s && s.status === 'pending') {
+    s.status = 'cancelled';
+    let products = DB.get('products');
+    s.items.forEach(item => {
+      const p = products.find(x => x.id === item.productId);
+      if (p) p.qty += item.qty;
+    });
+    DB.set('products', products);
+  }
+  DB.set('shippings', shippings);
+  renderShipping();
+  toast('Отгрузка отменена, товар возвращён');
+}
+
+function viewShippingDoc(id) {
+  const s = DB.get('shippings').find(x => x.id === id);
+  if (!s) return;
+  const products = DB.get('products');
+  let html = `<div class="doc-preview" id="printableDoc">
+    <h2>Накладная на отгрузку</h2>
+    <p><strong>№:</strong> ${esc(s.number)} | <strong>Дата:</strong> ${esc(s.date)}</p>
+    <p><strong>Клиент:</strong> ${esc(s.client||'—')} | <strong>Заказ:</strong> ${esc(s.order||'—')}</p>
+    ${s.address ? `<p><strong>Адрес:</strong> ${esc(s.address)}</p>` : ''}
+    <table><thead><tr><th>№</th><th>Артикул</th><th>Название</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>
+    ${s.items.map((item,i) => {
+      const p = products.find(x => x.id === item.productId);
+      const sum = (p?p.price:0) * item.qty;
+      return `<tr><td>${i+1}</td><td>${esc(p?p.sku:'—')}</td><td>${esc(p?p.name:'—')}</td><td>${item.qty}</td><td>${formatMoney(p?p.price:0)}</td><td>${formatMoney(sum)}</td></tr>`;
+    }).join('')}
+    </tbody></table>
+    <p><strong>Итого:</strong> ${s.items.reduce((x,i)=>{const p=products.find(y=>y.id===i.productId);return x+(p?p.price:0)*i.qty;},0).toLocaleString('ru-RU')} ₽</p>
+    <div class="doc-signature"><div>Отпустил</div><div>Принял</div></div>
+  </div>`;
+  document.getElementById('docPreviewContent').innerHTML = html;
+  openModal('docPreviewModal');
+}
+
+function printDocument() {
+  const content = document.getElementById('printableDoc');
+  if (!content) return;
+  const w = window.open('', '_blank');
+  w.document.write(`<html><head><title>Печать</title><style>
+    body{font-family:Arial,sans-serif;padding:20px}table{width:100%;border-collapse:collapse;margin:16px 0}
+    th,td{border:1px solid #000;padding:6px 10px;text-align:left;font-size:13px}
+    th{background:#f0f0f0}.doc-signature{display:flex;justify-content:space-between;margin-top:60px}
+    .doc-signature div{text-align:center;width:200px;border-top:1px solid #000;padding-top:8px}
+  </style></head><body>${content.innerHTML}</body></html>`);
+  w.document.close();
+  w.print();
+}
+
+// ==================== TASKS ====================
+function openTaskModal(id) {
+  document.getElementById('taskId').value = '';
+  document.getElementById('taskName').value = '';
+  document.getElementById('taskDesc').value = '';
+  document.getElementById('taskTime').value = '';
+  document.getElementById('taskDate').value = today();
+  document.getElementById('taskPriority').value = 'normal';
+  document.getElementById('taskModalTitle').textContent = 'Новая задача';
+
+  const employees = DB.get('employees');
+  document.getElementById('taskEmployee').innerHTML = '<option value="">— Не назначен —</option>' +
+    employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+
+  if (id) {
+    const t = DB.get('tasks').find(x => x.id === id);
+    if (t) {
+      document.getElementById('taskId').value = t.id;
+      document.getElementById('taskName').value = t.name;
+      document.getElementById('taskDesc').value = t.desc||'';
+      document.getElementById('taskEmployee').value = t.employeeId||'';
+      document.getElementById('taskTime').value = t.time||'';
+      document.getElementById('taskDate').value = t.date||today();
+      document.getElementById('taskPriority').value = t.priority||'normal';
+      document.getElementById('taskModalTitle').textContent = 'Редактировать задачу';
+    }
+  }
+  openModal('taskModal');
+}
+
+function saveTask() {
+  const id = document.getElementById('taskId').value;
+  const task = {
+    id: id || genId(),
+    name: document.getElementById('taskName').value.trim(),
+    desc: document.getElementById('taskDesc').value.trim(),
+    employeeId: document.getElementById('taskEmployee').value,
+    time: document.getElementById('taskTime').value,
+    date: document.getElementById('taskDate').value,
+    priority: document.getElementById('taskPriority').value,
+    status: 'new',
+    createdAt: new Date().toISOString()
+  };
+  if (!task.name) { toast('Введите название задачи','error'); return; }
+
+  let tasks = DB.get('tasks');
+  if (id) {
+    const idx = tasks.findIndex(t => t.id === id);
+    if (idx >= 0) { task.status = tasks[idx].status; task.createdAt = tasks[idx].createdAt; tasks[idx] = task; }
+  } else {
+    tasks.push(task);
+  }
+  DB.set('tasks', tasks);
+  closeModal('taskModal');
+  renderTasks();
+  toast(id ? 'Задача обновлена' : 'Задача создана');
+}
+
+function toggleTask(id) {
+  let tasks = DB.get('tasks');
+  const t = tasks.find(x => x.id === id);
+  if (t) {
+    if (t.status === 'done') t.status = 'new';
+    else if (t.status === 'new') t.status = 'in_progress';
+    else t.status = 'done';
+  }
+  DB.set('tasks', tasks);
+  renderTasks();
+}
+
+function deleteTask(id) {
+  if (!confirm('Удалить задачу?')) return;
+  DB.set('tasks', DB.get('tasks').filter(t => t.id !== id));
+  renderTasks();
+  toast('Задача удалена');
+}
+
+function renderTasks() {
+  let tasks = DB.get('tasks');
+  const filterEmp = document.getElementById('taskFilterEmployee')?.value || '';
+  const filterStatus = document.getElementById('taskFilterStatus')?.value || '';
+
+  if (filterEmp) tasks = tasks.filter(t => t.employeeId === filterEmp);
+  if (filterStatus) tasks = tasks.filter(t => t.status === filterStatus);
+
+  const employees = DB.get('employees');
+  const filterEl = document.getElementById('taskFilterEmployee');
+  if (filterEl) {
+    const v = filterEl.value;
+    filterEl.innerHTML = '<option value="">Все сотрудники</option>' + employees.map(e=>`<option value="${e.id}" ${e.id===v?'selected':''}>${e.name}</option>`).join('');
+  }
+
+  const statusLabels = { new: ['Новая','badge-info'], in_progress: ['В работе','badge-warning'], done: ['Выполнена','badge-success'] };
+  const priorityLabels = { normal: '', high: '🔵', urgent: '🔴' };
+
+  document.getElementById('taskList').innerHTML = tasks.sort((a,b) => {
+    if (a.status === 'done' && b.status !== 'done') return 1;
+    if (a.status !== 'done' && b.status === 'done') return -1;
+    return a.priority === 'urgent' ? -1 : 0;
+  }).map(t => {
+    const emp = employees.find(e => e.id === t.employeeId);
+    const [sLabel, sCls] = statusLabels[t.status] || ['',''];
+    return `<div class="task-card ${t.priority==='urgent'?'urgent':''} ${t.status==='done'?'done':''}">
+      <div class="flex justify-between items-center">
+        <h4>${priorityLabels[t.priority]||''} ${esc(t.name)}</h4>
+        <div class="flex gap-2">
+          <span class="badge ${sCls}">${sLabel}</span>
+          <button class="btn btn-outline btn-sm" onclick="openTaskModal('${t.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">🗑️</button>
+        </div>
+      </div>
+      ${t.desc ? `<p>${esc(t.desc)}</p>` : ''}
+      <div class="task-meta">
+        <span>👤 ${emp ? emp.name : '—'}</span>
+        <span>📅 ${t.date||''} ${t.time||''}</span>
+        <button class="btn btn-sm ${t.status==='done'?'btn-outline':'btn-success'}" onclick="toggleTask('${t.id}')">${t.status==='done'?'↩️ Вернуть':'✅ Выполнить'}</button>
+      </div>
+    </div>`;
+  }).join('') || '<p class="text-muted">Нет задач</p>';
+}
+
+// ==================== EMPLOYEES ====================
+function openEmployeeModal(id) {
+  document.getElementById('empId').value = '';
+  document.getElementById('empName').value = '';
+  document.getElementById('empPosition').value = '';
+  document.getElementById('empRate').value = '300';
+  document.getElementById('empPhone').value = '';
+  document.getElementById('empEmail').value = '';
+  document.getElementById('empPhoto').value = '';
+  document.getElementById('empModalTitle').textContent = 'Добавить сотрудника';
+  document.getElementById('empDocsList').innerHTML = '';
+  const pu = document.getElementById('empPhotoUpload');
+  pu.innerHTML = '<span>📷 Фото</span><input type="file" accept="image/*" onchange="handlePhotoUpload(event,\'empPhoto\')">';
+
+  if (id) {
+    const e = DB.get('employees').find(x => x.id === id);
+    if (e) {
+      document.getElementById('empId').value = e.id;
+      document.getElementById('empName').value = e.name;
+      document.getElementById('empPosition').value = e.position||'';
+      document.getElementById('empRate').value = e.rate||300;
+      document.getElementById('empPhone').value = e.phone||'';
+      document.getElementById('empEmail').value = e.email||'';
+      document.getElementById('empPhoto').value = e.photo||'';
+      document.getElementById('empModalTitle').textContent = 'Редактировать сотрудника';
+      if (e.photo) {
+        document.getElementById('empPhotoUpload').innerHTML = '<img src="'+e.photo+'"><input type="file" accept="image/*" onchange="handlePhotoUpload(event,\'empPhoto\')">';
+      }
+      const docs = DB.getObj('empDocs_'+e.id);
+      renderDocsList('empDocs_'+e.id, docs);
+    }
+  }
+  openModal('employeeModal');
+}
+
+function saveEmployee() {
+  const id = document.getElementById('empId').value;
+  const emp = {
+    id: id || genId(),
+    name: document.getElementById('empName').value.trim(),
+    position: document.getElementById('empPosition').value.trim(),
+    rate: parseFloat(document.getElementById('empRate').value) || 0,
+    phone: document.getElementById('empPhone').value.trim(),
+    email: document.getElementById('empEmail').value.trim(),
+    photo: document.getElementById('empPhoto').value,
+    online: true,
+    hoursToday: 0,
+    createdAt: new Date().toISOString()
+  };
+  if (!emp.name) { toast('Введите ФИО','error'); return; }
+
+  let employees = DB.get('employees');
+  if (id) {
+    const idx = employees.findIndex(e => e.id === id);
+    if (idx >= 0) { emp.online = employees[idx].online; emp.hoursToday = employees[idx].hoursToday; emp.createdAt = employees[idx].createdAt; employees[idx] = emp; }
+  } else {
+    employees.push(emp);
+  }
+  DB.set('employees', employees);
+  closeModal('employeeModal');
+  renderEmployees();
+  toast(id ? 'Сотрудник обновлён' : 'Сотрудник добавлен');
+}
+
+function deleteEmployee(id) {
+  if (!confirm('Удалить сотрудника?')) return;
+  DB.set('employees', DB.get('employees').filter(e => e.id !== id));
+  renderEmployees();
+  toast('Сотрудник удалён');
+}
+
+function toggleOnline(id) {
+  let employees = DB.get('employees');
+  const e = employees.find(x => x.id === id);
+  if (e) e.online = !e.online;
+  DB.set('employees', employees);
+  renderEmployees();
+}
+
+function addHours(id) {
+  let employees = DB.get('employees');
+  const e = employees.find(x => x.id === id);
+  if (e) e.hoursToday = (e.hoursToday||0) + 1;
+  DB.set('employees', employees);
+  renderEmployees();
+}
+
+function renderEmployees() {
+  const employees = DB.get('employees');
+  const totalEarned = employees.reduce((s,e) => s + (e.hoursToday||0) * (e.rate||0), 0);
+  const onlineCount = employees.filter(e => e.online).length;
+
+  document.getElementById('empStats').innerHTML = `
+    <div class="stat-card"><div class="stat-icon blue">👥</div><div class="stat-info"><h4>${employees.length}</h4><p>Всего сотрудников</p></div></div>
+    <div class="stat-card"><div class="stat-icon green">🟢</div><div class="stat-info"><h4>${onlineCount}</h4><p>Онлайн</p></div></div>
+    <div class="stat-card"><div class="stat-icon orange">⏰</div><div class="stat-info"><h4>${employees.reduce((s,e)=>s+(e.hoursToday||0),0)}</h4><p>Часов сегодня</p></div></div>
+    <div class="stat-card"><div class="stat-icon red">💰</div><div class="stat-info"><h4>${formatMoney(totalEarned)}</h4><p>Зарплата сегодня</p></div></div>
+  `;
+
+  document.getElementById('employeesTable').innerHTML = employees.map(e => `
+    <tr>
+      <td>${e.photo ? `<img src="${e.photo}" class="table-img" style="border-radius:50%">` : '<div class="table-img" style="border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px">👤</div>'}</td>
+      <td><strong>${esc(e.name)}</strong></td>
+      <td>${esc(e.position||'—')}</td>
+      <td>${formatMoney(e.rate)}/час</td>
+      <td>
+        <span class="online-dot ${e.online?'online':'offline'}"></span>
+        <button class="btn btn-sm btn-outline" onclick="toggleOnline('${e.id}')" style="margin-left:4px">${e.online?'🟢':'⚫'}</button>
+      </td>
+      <td>
+        <strong>${e.hoursToday||0} ч</strong>
+        <button class="btn btn-sm btn-outline" onclick="addHours('${e.id}')" style="margin-left:4px">+1ч</button>
+        <br><span class="text-sm text-muted">${formatMoney((e.hoursToday||0)*(e.rate||0))}</span>
+      </td>
+      <td>
+        ${DB.getObj('empDocs_'+e.id).length > 0 ? `<span class="badge badge-success">${DB.getObj('empDocs_'+e.id).length} 📎</span>` : '<span class="text-muted">—</span>'}
+      </td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="openEmployeeModal('${e.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteEmployee('${e.id}')">🗑️</button>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="8" class="text-muted text-center">Нет сотрудников</td></tr>';
+}
+
+// ==================== INVENTORY ====================
+let inventoryData = [];
+
+function initInventory() {
+  const employees = DB.get('employees');
+  document.getElementById('invEmployee').innerHTML = employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+}
+
+function startInventory() {
+  inventoryData = [];
+  document.getElementById('inventoryArea').style.display = 'block';
+  document.getElementById('invScanInput').focus();
+  renderInventoryTable();
+  toast('Инвентаризация начата');
+}
+
+function handleInvScan(event) {
+  if (event.key === 'Enter') {
+    const sku = document.getElementById('invScanInput').value.trim();
+    if (!sku) return;
+    const products = DB.get('products');
+    const p = products.find(x => x.sku === sku);
+    if (!p) { toast('Товар не найден: ' + sku, 'error'); return; }
+
+    const existing = inventoryData.find(x => x.productId === p.id);
+    if (existing) {
+      existing.actual = parseInt(document.getElementById('invActualQty').value) || 0;
+    } else {
+      inventoryData.push({ productId: p.id, sku: p.sku, name: p.name, system: p.qty, actual: parseInt(document.getElementById('invActualQty').value) || 0 });
+    }
+    document.getElementById('invScanInput').value = '';
+    document.getElementById('invActualQty').value = '0';
+    renderInventoryTable();
+  }
+}
+
+function addInventoryItem() {
+  const sku = document.getElementById('invScanInput').value.trim();
+  if (!sku) { toast('Введите артикул','error'); return; }
+  handleInvScan({ key: 'Enter' });
+}
+
+function renderInventoryTable() {
+  document.getElementById('inventoryTable').innerHTML = inventoryData.map((item,i) => {
+    const diff = item.actual - item.system;
+    const diffColor = diff === 0 ? '' : diff > 0 ? 'color:var(--success)' : 'color:var(--danger)';
+    return `<tr>
+      <td>${esc(item.sku)}</td>
+      <td>${esc(item.name)}</td>
+      <td>${item.system}</td>
+      <td><input type="number" class="form-control qty-input" value="${item.actual}" onchange="inventoryData[${i}].actual=parseInt(this.value)||0;renderInventoryTable()"></td>
+      <td style="${diffColor};font-weight:600">${diff > 0 ? '+' : ''}${diff}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="text-muted text-center">Отсканируйте товары</td></tr>';
+}
+
+function finishInventory() {
+  if (!inventoryData.length) { toast('Нет данных','error'); return; }
+  const inv = {
+    id: genId(),
+    date: now(),
+    employeeId: document.getElementById('invEmployee').value,
+    items: [...inventoryData],
+    createdAt: new Date().toISOString()
+  };
+  let inventories = DB.get('inventories');
+  inventories.push(inv);
+  DB.set('inventories', inventories);
+
+  // Update stock to actual
+  let products = DB.get('products');
+  inventoryData.forEach(item => {
+    const p = products.find(x => x.id === item.productId);
+    if (p) p.qty = item.actual;
+  });
+  DB.set('products', products);
+
+  document.getElementById('inventoryArea').style.display = 'none';
+  inventoryData = [];
+  toast('Инвентаризация завершена, остатки обновлены');
+}
+
+function printInventoryReport() {
+  if (!inventoryData.length && DB.get('inventories').length === 0) {
+    toast('Нет данных для отчёта','error'); return;
+  }
+  const employees = DB.get('employees');
+  const empId = document.getElementById('invEmployee').value;
+  const emp = employees.find(e => e.id === empId);
+  const dataToPrint = inventoryData.length ? inventoryData : DB.get('inventories').slice(-1)[0]?.items || [];
+
+  let html = `<div class="doc-preview" id="printableDoc">
+    <h2>Акт инвентаризации</h2>
+    <p><strong>Дата:</strong> ${now()} | <strong>Сотрудник:</strong> ${emp ? emp.name : '—'}</p>
+    <table><thead><tr><th>№</th><th>Артикул</th><th>Название</th><th>Система</th><th>Факт</th><th>Расхождение</th></tr></thead><tbody>
+    ${dataToPrint.map((item,i) => {
+      const diff = item.actual - item.system;
+      return `<tr><td>${i+1}</td><td>${esc(item.sku)}</td><td>${esc(item.name)}</td><td>${item.system}</td><td>${item.actual}</td><td style="color:${diff===0?'':diff>0?'green':'red'}">${diff>0?'+':''}${diff}</td></tr>`;
+    }).join('')}
+    </tbody></table>
+    <p><strong>Всего позиций:</strong> ${dataToPrint.length}</p>
+    <div class="doc-signature"><div>Провёл инвентаризацию</div><div>Утвердил</div></div>
+  </div>`;
+  document.getElementById('docPreviewContent').innerHTML = html;
+  openModal('docPreviewModal');
+}
+
+// ==================== LABELS ====================
+function initLabels() {
+  const products = DB.get('products');
+  document.getElementById('labelProduct').innerHTML = '<option value="">— Выберите товар —</option>' +
+    products.map(p => `<option value="${p.id}">${p.sku} — ${p.name}</option>`).join('');
+}
+
+function generateLabels() {
+  const productId = document.getElementById('labelProduct').value;
+  const qty = parseInt(document.getElementById('labelQty').value) || 1;
+  if (!productId) { toast('Выберите товар','error'); return; }
+
+  const product = DB.get('products').find(p => p.id === productId);
+  if (!product) return;
+
+  const size = document.getElementById('labelSize').value;
+  const showBarcode = document.getElementById('labelBarcode').checked;
+  const showPrice = document.getElementById('labelPrice').checked;
+  const showLocation = document.getElementById('labelLocation').checked;
+
+  let width = '58mm', height = '40mm';
+  if (size === '58x30') { width = '58mm'; height = '30mm'; }
+  if (size === '100x80') { width = '100mm'; height = '80mm'; }
+
+  let labelsHtml = '';
+  for (let i = 0; i < qty; i++) {
+    labelsHtml += `<div style="border:1px solid #000; padding:6px; margin:4px; display:inline-block; width:${width}; height:${height}; font-size:11px; page-break-inside:avoid; vertical-align:top;">
+      <div style="font-weight:bold;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(product.name)}</div>
+      <div style="margin:2px 0">Арт: <strong>${esc(product.sku)}</strong></div>
+      ${showPrice ? `<div>Цена: <strong>${formatMoney(product.price)}</strong></div>` : ''}
+      ${showLocation ? `<div>Место: ${esc(product.location||'—')}</div>` : ''}
+      ${showBarcode ? `<div style="margin-top:2px;font-family:monospace;font-size:14px;letter-spacing:2px">||| ${product.sku} |||</div>` : ''}
+    </div>`;
+  }
+
+  document.getElementById('labelPreviewArea').innerHTML = `
+    <div class="flex justify-between items-center mb-2">
+      <h4>Предпросмотр этикеток (${qty} шт.)</h4>
+      <button class="btn btn-primary" onclick="printLabels()">🖨️ Печать</button>
+    </div>
+    <div id="labelsPrintArea">${labelsHtml}</div>
+  `;
+  toast('Этикетки созданы');
+}
+
+function printLabels() {
+  const content = document.getElementById('labelsPrintArea');
+  if (!content) return;
+  const w = window.open('', '_blank');
+  w.document.write(`<html><head><title>Этикетки</title><style>
+    body{margin:0;padding:10px;font-family:Arial,sans-serif}
+    @media print{body{padding:0}}
+  </style></head><body>${content.innerHTML}</body></html>`);
+  w.document.close();
+  w.print();
+}
+
+// ==================== DOCUMENTS ====================
+function renderDocuments() {
+  const receivings = DB.get('receivings');
+  const shippings = DB.get('shippings');
+  const inventories = DB.get('inventories');
+
+  document.getElementById('docReceivingList').innerHTML = receivings.map(r =>
+    `<div class="emp-card"><div class="emp-info"><h4>📥 ${esc(r.number)} — ${esc(r.supplier||'Поставщик')}</h4><p>${esc(r.date)} • ${r.items.reduce((s,i)=>s+i.qty,0)} шт.</p></div>
+    <button class="btn btn-outline btn-sm" onclick="viewReceivingDoc('${r.id}')">📄 Просмотр</button></div>`
+  ).join('') || '<p class="text-muted">Нет документов приёмки</p>';
+
+  document.getElementById('docShippingList').innerHTML = shippings.map(s =>
+    `<div class="emp-card"><div class="emp-info"><h4>📤 ${esc(s.number)} — ${esc(s.client||'Клиент')}</h4><p>${esc(s.date)} • ${s.items.reduce((x,i)=>x+i.qty,0)} шт.</p></div>
+    <button class="btn btn-outline btn-sm" onclick="viewShippingDoc('${s.id}')">📄 Просмотр</button></div>`
+  ).join('') || '<p class="text-muted">Нет документов отгрузки</p>';
+
+  const employees = DB.get('employees');
+  document.getElementById('docInventoryList').innerHTML = inventories.map(inv => {
+    const emp = employees.find(e => e.id === inv.employeeId);
+    return `<div class="emp-card"><div class="emp-info"><h4>📋 Инвентаризация</h4><p>${esc(inv.date)} • ${emp?emp.name:'—'} • ${inv.items.length} поз.</p></div>
+    <button class="btn btn-outline btn-sm" onclick="viewInventoryDoc('${inv.id}')">📄 Просмотр</button></div>`;
+  }).join('') || '<p class="text-muted">Нет актов инвентаризации</p>';
+}
+
+function viewInventoryDoc(id) {
+  const inv = DB.get('inventories').find(x => x.id === id);
+  if (!inv) return;
+  const employees = DB.get('employees');
+  const emp = employees.find(e => e.id === inv.employeeId);
+  let html = `<div class="doc-preview" id="printableDoc">
+    <h2>Акт инвентаризации</h2>
+    <p><strong>Дата:</strong> ${esc(inv.date)} | <strong>Сотрудник:</strong> ${emp?emp.name:'—'}</p>
+    <table><thead><tr><th>№</th><th>Артикул</th><th>Название</th><th>Система</th><th>Факт</th><th>Расхождение</th></tr></thead><tbody>
+    ${inv.items.map((item,i) => {
+      const diff = item.actual - item.system;
+      return `<tr><td>${i+1}</td><td>${esc(item.sku)}</td><td>${esc(item.name)}</td><td>${item.system}</td><td>${item.actual}</td><td style="color:${diff===0?'':diff>0?'green':'red'}">${diff>0?'+':''}${diff}</td></tr>`;
+    }).join('')}
+    </tbody></table>
+    <div class="doc-signature"><div>Провёл инвентаризацию</div><div>Утвердил</div></div>
+  </div>`;
+  document.getElementById('docPreviewContent').innerHTML = html;
+  openModal('docPreviewModal');
+}
+
+// ==================== DASHBOARD ====================
+function renderDashboard() {
+  const products = DB.get('products');
+  const receivings = DB.get('receivings');
+  const shippings = DB.get('shippings');
+  const tasks = DB.get('tasks');
+  const employees = DB.get('employees');
+
+  const totalProducts = products.length;
+  const totalQty = products.reduce((s,p) => s + p.qty, 0);
+  const totalValue = products.reduce((s,p) => s + p.qty * p.cost, 0);
+  const pendingTasks = tasks.filter(t => t.status !== 'done').length;
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-icon blue">📦</div><div class="stat-info"><h4>${totalProducts}</h4><p>Товаров</p></div></div>
+    <div class="stat-card"><div class="stat-icon green">📊</div><div class="stat-info"><h4>${totalQty.toLocaleString('ru-RU')}</h4><p>Единиц на складе</p></div></div>
+    <div class="stat-card"><div class="stat-icon orange">💰</div><div class="stat-info"><h4>${formatMoney(totalValue)}</h4><p>Стоимость склада</p></div></div>
+    <div class="stat-card"><div class="stat-icon red">📋</div><div class="stat-info"><h4>${pendingTasks}</h4><p>Активных задач</p></div></div>
+  `;
+
+  // Recent tasks
+  const recentTasks = tasks.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
+  document.getElementById('dashTasks').innerHTML = recentTasks.map(t => {
+    const sCls = t.status==='done'?'badge-success':t.status==='in_progress'?'badge-warning':'badge-info';
+    const sLbl = t.status==='done'?'Выполнена':t.status==='in_progress'?'В работе':'Новая';
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center">
+      <span>${esc(t.name)}</span><span class="badge ${sCls}">${sLbl}</span>
+    </div>`;
+  }).join('') || '<p class="text-muted">Нет задач</p>';
+
+  // Recent receivings
+  const recentRec = receivings.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
+  document.getElementById('dashReceiving').innerHTML = recentRec.map(r =>
+    `<div style="padding:6px 0;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center">
+      <span>${esc(r.number)} — ${esc(r.supplier||'—')}</span><span class="text-sm text-muted">${esc(r.date)}</span>
+    </div>`
+  ).join('') || '<p class="text-muted">Нет приёмки</p>';
+}
+
+// ==================== BOT ====================
+let botOpen = false;
+
+function toggleBot() {
+  botOpen = !botOpen;
+  document.getElementById('botWindow').classList.toggle('active', botOpen);
+  if (botOpen && document.getElementById('botMessages').children.length === 0) {
+    addBotMsg("Привет! 🎉 Я ФулфиБот — ваш весёлый помощник! Я знаю всё о складе, приёмке, отгрузках и сотрудниках. Спрашивайте что угодно! 😄\n\nПопробуйте спросить:\n• Сколько товаров на складе?\n• Кто онлайн?\n• Какие задачи сегодня?");
+  }
+}
+
+function addBotMsg(text, isUser) {
+  const div = document.createElement('div');
+  div.className = 'bot-msg ' + (isUser ? 'user' : 'bot');
+  div.textContent = text;
+  const container = document.getElementById('botMessages');
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function sendBotMsg() {
+  const input = document.getElementById('botInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  addBotMsg(msg, true);
+  input.value = '';
+
+  setTimeout(() => {
+    const response = getBotResponse(msg);
+    addBotMsg(response, false);
+  }, 500 + Math.random() * 500);
+}
+
+function getBotResponse(msg) {
+  const m = msg.toLowerCase();
+  const products = DB.get('products');
+  const tasks = DB.get('tasks');
+  const employees = DB.get('employees');
+  const receivings = DB.get('receivings');
+  const shippings = DB.get('shippings');
+
+  if (m.includes('товар') && (m.includes('сколько') || m.includes('скольк'))) {
+    const total = products.reduce((s,p) => s + p.qty, 0);
+    return `📦 У нас ${products.length} наименований товаров, всего ${total.toLocaleString('ru-RU')} единиц на складе! Я бы тоже хотел посидеть на коробках 📦😄`;
+  }
+  if (m.includes('онлайн') || m.includes('кто работает')) {
+    const online = employees.filter(e => e.online);
+    if (online.length) return `🟢 Сейчас онлайн: ${online.map(e => e.name).join(', ')}. Работают как пчёлки! 🐝`;
+    return `😴 Пока никто не онлайн. Может, все на обед? 🍕`;
+  }
+  if (m.includes('задач') || m.includes('задач')) {
+    const pending = tasks.filter(t => t.status !== 'done').length;
+    const done = tasks.filter(t => t.status === 'done').length;
+    return `📋 Задач: ${pending} активных, ${done} выполнено. Давайте разгребём этот список! 💪`;
+  }
+  if (m.includes('приёмк') || m.includes('принял')) {
+    return `📥 Всего приёмок: ${receivings.length}. Последняя: ${receivings.length ? receivings[receivings.length-1].number : 'ещё не было'}. Товары сами себя не примут! 😄`;
+  }
+  if (m.includes('отгрузк') || m.includes('отправ')) {
+    return `📤 Всего отгрузок: ${shippings.length}. Клиенты ждут свои заказы! 🚚💨`;
+  }
+  if (m.includes('сотрудник') || m.includes('рабоч')) {
+    return `👥 Всего сотрудников: ${employees.length}. Команда — наша сила! 💪🤝`;
+  }
+  if (m.includes('привет') || m.includes('здравствуй') || m.includes('хай') || m.includes('hello')) {
+    return `Привет-привет! 👋😄 Как дела? Чем могу помочь? Я тут весь склад знаю вдоль и поперёк! 🏭`;
+  }
+  if (m.includes('спасибо') || m.includes('благодар')) {
+    return `Пожалуйста! 😊 Обращайтесь в любое время! Я всегда тут, на складе, между коробками 📦😄`;
+  }
+  if (m.includes('помощь') || m.includes('помоги') || m.includes('что умеешь') || m.includes('что ты')) {
+    return `🤖 Что я умею:\n• 📊 Рассказать о складе\n• 👥 Показать сотрудников онлайн\n• 📋 Задачи и приёмки\n• 📤 Отгрузки\n• 💡 Дать совет!\nПросто спросите! 😄`;
+  }
+  if (m.includes('совет') || m.includes('как')) {
+    const tips = [
+      "💡 Совет: регулярно проводите инвентаризацию — это спасает от расхождений!",
+      "💡 Совет: используйте сканер для приёмки — это быстрее и точнее!",
+      "💡 Совет: назначайте задачи с приоритетами — так ничего не потеряется!",
+      "💡 Совет: печатайте этикетки сразу при приёмке — потом искать не придётся!",
+      "💡 Совет: контролируйте часы сотрудников — это важно для зарплаты! 😄"
+    ];
+    return tips[Math.floor(Math.random() * tips.length)];
+  }
+  if (m.includes('шутк') || m.includes('анекдот') || m.includes('смешн') || m.includes('рассмеши')) {
+    const jokes = [
+      "😄 Почему складской работник не играет в прятки? Потому что его всегда находят по штрихкоду! 📦",
+      "😄 Что сказал один паллет другому? — Давай соберёмся! 🏗️",
+      "😄 Как складской робот говорит 'люблю'? — 01001000 01000101 01001100 01001100 01001111 😂",
+      "😄 — Сколько коробок нужно, чтобы переехать? — Столько, сколько поместится в инвентаризацию! 📋😄"
+    ];
+    return jokes[Math.floor(Math.random() * jokes.length)];
+  }
+
+  const responses = [
+    `Хм, интересный вопрос! 🤔 Попробуйте спросить про товары, сотрудников или задачи — я это точно знаю! 😄`,
+    `Ой, я пока не знаю ответа на это 🤷 Но я точно знаю, что на складе ${products.length} товаров! 📦`,
+    `Я всего лишь бот-помощник, но я стараюсь! 😅 Спросите про склад, приёмку или задачи!`,
+    `🤖 Загрузка ответа... 42%... 87%... Шутка! 😄 Я не могу ответить на это, но могу рассказать про склад!`
+  ];
+  return responses[Math.floor(Math.random() * responses.length)];
+}
+
+// ==================== INIT ====================
+function init() {
+  // Update datetime
+  function updateTime() {
+    document.getElementById('currentDateTime').textContent = now();
+  }
+  updateTime();
+  setInterval(updateTime, 1000);
+
+  // Simulate employee online status (randomly toggle every 30s)
+  setInterval(() => {
+    let employees = DB.get('employees');
+    employees.forEach(e => {
+      if (Math.random() > 0.9) e.online = !e.online;
+    });
+    DB.set('employees', employees);
+  }, 30000);
+
+  // Render dashboard
+  renderDashboard();
+
+  // Check responsive
+  if (window.innerWidth <= 768) {
+    document.getElementById('menuBtn').style.display = 'block';
+  }
+  window.addEventListener('resize', () => {
+    document.getElementById('menuBtn').style.display = window.innerWidth <= 768 ? 'block' : 'none';
+  });
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('active');
+  });
+});
+
+init();
 </script>
 </body>
 </html>
